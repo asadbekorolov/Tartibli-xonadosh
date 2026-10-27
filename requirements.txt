@@ -1,0 +1,20 @@
+# Modern Async Telegram Bot Framework
+aiogram>=3.15.0
+
+# Database & ORM (Async SQLAlchemy 2.0 & asyncpg driver)
+SQLAlchemy>=2.0.35
+asyncpg>=0.29.0
+alembic>=1.13.3
+greenlet>=3.1.0
+
+# Configuration & Settings Management
+pydantic>=2.9.2
+pydantic-settings>=2.5.2
+python-dotenv>=1.0.1
+
+# Caching & FSM Storage
+redis>=5.1.1
+
+# Task Scheduling for Chores & Reminders
+apscheduler>=3.10.4
+pytz>=2024.2

@@ -1,0 +1,95 @@
+from datetime import date, datetime
+from enum import Enum
+from typing import TYPE_CHECKING, List, Optional
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Date,
+    DateTime,
+    Enum as SQLEnum,
+    ForeignKey,
+    Integer,
+    String,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.database.base import Base, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.flat import Flat
+    from app.models.user import User
+
+
+class RotationType(str, Enum):
+    ROUND_ROBIN = "ROUND_ROBIN"      # Cyclic queue through members
+    FIXED_DAYS = "FIXED_DAYS"        # Fixed days or daily assignments
+
+
+class ChoreStatus(str, Enum):
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    SKIPPED = "SKIPPED"
+
+
+class Chore(Base, TimestampMixin):
+    """
+    Template or recurring duty definition for a flat.
+    E.g. Kitchen cleaning, Trash disposal, Water refill, Dishwashing.
+    """
+    __tablename__ = "chores"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    flat_id: Mapped[int] = mapped_column(Integer, ForeignKey("flats.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    rotation_type: Mapped[RotationType] = mapped_column(
+        SQLEnum(RotationType, name="rotation_type_enum"),
+        default=RotationType.ROUND_ROBIN,
+        nullable=False
+    )
+    frequency_days: Mapped[int] = mapped_column(Integer, default=1, nullable=False)  # 1 = daily, 7 = weekly
+    execution_time: Mapped[str] = mapped_column(String(5), default="20:00", nullable=False)  # HH:MM format
+    current_member_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    @property
+    def status(self) -> str:
+        """String representation of chore active status."""
+        return "ACTIVE" if self.is_active else "INACTIVE"
+
+    # Relationships
+    flat: Mapped["Flat"] = relationship("Flat", back_populates="chores")
+    assignments: Mapped[List["ChoreAssignment"]] = relationship(
+        "ChoreAssignment", back_populates="chore", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Chore id={self.id} title='{self.title}' time='{self.execution_time}'>"
+
+
+class ChoreAssignment(Base, TimestampMixin):
+    """
+    Specific instance of a chore assigned to a student flatmate on a given date.
+    """
+    __tablename__ = "chore_assignments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    chore_id: Mapped[int] = mapped_column(Integer, ForeignKey("chores.id", ondelete="CASCADE"), nullable=False)
+    flat_id: Mapped[int] = mapped_column(Integer, ForeignKey("flats.id", ondelete="CASCADE"), nullable=False)
+    assignee_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    due_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    status: Mapped[ChoreStatus] = mapped_column(
+        SQLEnum(ChoreStatus, name="chore_status_enum"),
+        default=ChoreStatus.PENDING,
+        nullable=False,
+        index=True
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Relationships
+    chore: Mapped["Chore"] = relationship("Chore", back_populates="assignments", lazy="selectin")
+    flat: Mapped["Flat"] = relationship("Flat", back_populates="chore_assignments")
+    assignee: Mapped["User"] = relationship("User", back_populates="chore_assignments", lazy="selectin")
+
+    def __repr__(self) -> str:
+        return f"<ChoreAssignment id={self.id} chore_id={self.chore_id} assignee_id={self.assignee_id} status={self.status}>"
