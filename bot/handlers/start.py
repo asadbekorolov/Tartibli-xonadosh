@@ -2,6 +2,7 @@ import re
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
+from aiogram.html import quote
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from bot.config import get_settings
@@ -57,43 +58,49 @@ async def handle_start(message: Message, state: FSMContext, session: AsyncSessio
         else:
             success, reply_msg = await join_flat(session, user.id, flat.id)
             if success:
+                safe_reply = quote(reply_msg)
+                safe_name = quote(flat.name)
+                safe_code = quote(flat.invite_code)
                 await message.answer(
-                    f"🎉 **{reply_msg}**\n\n"
-                    f"🏠 **Kvartira:** {flat.name}\n"
-                    f"🔑 **Taklif kodi:** `{flat.invite_code}`\n\n"
+                    f"🎉 <b>{safe_reply}</b>\n\n"
+                    f"🏠 <b>Kvartira:</b> {safe_name}\n"
+                    f"🔑 <b>Taklif kodi:</b> <code>{safe_code}</code>\n\n"
                     "Quyidagi boshqaruv paneli orqali kerakli bo'limni tanlang:",
                     reply_markup=get_flat_dashboard_kb(flat.invite_code, settings.BOT_NAME),
-                    parse_mode="Markdown",
+                    parse_mode="HTML",
                 )
                 return
             else:
-                await message.answer(f"⚠️ {reply_msg}")
+                await message.answer(f"⚠️ {quote(reply_msg)}")
 
     # 2. Check if user is already in a flat
     if user.flat_id:
         flat = await get_flat_by_id(session, user.flat_id)
         if flat:
+            safe_user = quote(user.full_name)
+            safe_flat = quote(flat.name)
             await message.answer(
-                f"Assalomu alaykum, **{user.full_name}**!\n\n"
-                f"🏠 Siz **{flat.name}** kvartirasi a'zosisiz.\n"
+                f"Assalomu alaykum, <b>{safe_user}</b>!\n\n"
+                f"🏠 Siz <b>{safe_flat}</b> kvartirasi a'zosisiz.\n"
                 f"👥 Xonadoshlar soni: {len(flat.members)} kishi\n\n"
                 "Kerakli bo'limni tanlang:",
                 reply_markup=get_flat_dashboard_kb(flat.invite_code, settings.BOT_NAME),
-                parse_mode="Markdown",
+                parse_mode="HTML",
             )
             return
 
     # 3. New / Unregistered user
+    safe_user = quote(user.full_name)
     text = (
-        f"Assalomu alaykum, **{user.full_name}**!\n\n"
-        "🌟 **'Tartibli Xonadosh'** tizimiga xush kelibsiz!\n\n"
+        f"Assalomu alaykum, <b>{safe_user}</b>!\n\n"
+        "🌟 <b>'Tartibli Xonadosh'</b> tizimiga xush kelibsiz!\n\n"
         "Ushbu bot talabalar kvartirasida quyidagi kundalik ishlarni 24/7 avtomatlashtiradi:\n"
-        "🔹 **Navbatchilik:** Tozalik, musor va suv nazoratini navbatma-navbat (Round-robin) taqsimlash;\n"
-        "🔹 **Eslatmalar:** Har kuni ertalab 08:00 da navbatchiga avtomatik bildirishnoma yuborish;\n"
-        "🔹 **Xarajatlar:** Umumiy bozorlik va to'lovlarni hisoblab, qarzlarni soddalashtirish (Min-Cash-Flow).\n\n"
+        "🔹 <b>Navbatchilik:</b> Tozalik, musor va suv nazoratini navbatma-navbat (Round-robin) taqsimlash;\n"
+        "🔹 <b>Eslatmalar:</b> Har kuni ertalab 08:00 da navbatchiga avtomatik bildirishnoma yuborish;\n"
+        "🔹 <b>Xarajatlar:</b> Umumiy bozorlik va to'lovlarni hisoblab, qarzlarni soddalashtirish (Min-Cash-Flow).\n\n"
         "Boshlash uchun yangi kvartira yarating yoki xonadoshingiz bergan kod bilan qo'shiling:"
     )
-    await message.answer(text, reply_markup=get_start_unregistered_kb(), parse_mode="Markdown")
+    await message.answer(text, reply_markup=get_start_unregistered_kb(), parse_mode="HTML")
 
 
 @router.message(Command("help"))
@@ -101,26 +108,26 @@ async def handle_start(message: Message, state: FSMContext, session: AsyncSessio
 async def handle_help(event: Message | CallbackQuery) -> None:
     """Detailed user manual."""
     text = (
-        "📖 **Botdan foydalanish bo'yicha qo'llanma:**\n\n"
-        "🔹 **Kvartira buyruqlari:**\n"
-        "• `/create_flat` — Yangi kvartira ochish va taklif kodini olish\n"
-        "• `/join_flat <code>` — Taklif kodi orqali kvartiraga qo'shilish\n"
-        "• `/members` — Kvartiradagi barcha xonadoshlar ro'yxati\n"
-        "• `/leave_flat` — Kvartirani tark etish\n\n"
-        "🔹 **Navbatchilik (Chores):**\n"
-        "• `/chores` — Bugungi navbatchilar va vazifalar holati\n"
-        "• `/add_chore <nomi>` — Yangi navbatchilik vazifasi qo'shish\n"
-        "• Har kuni 08:00 da bot navbatchiga eslatma yuboradi. `Bajarildi` tugmasi bosilgach, navbat avtomatik keyingi talabaga o'tadi.\n\n"
-        "🔹 **Xarajatlar (Expenses):**\n"
-        "• `/add_expense` — Umumiy qilingan xarajatni kiritish va teng bo'lish\n"
-        "• `/balance` — Kim kimga qancha qarz ekanligini ko'rish (Min-Cash-Flow)\n\n"
+        "📖 <b>Botdan foydalanish bo'yicha qo'llanma:</b>\n\n"
+        "🔹 <b>Kvartira buyruqlari:</b>\n"
+        "• <code>/create_flat</code> — Yangi kvartira ochish va taklif kodini olish\n"
+        "• <code>/join_flat &lt;code&gt;</code> — Taklif kodi orqali kvartiraga qo'shilish\n"
+        "• <code>/members</code> — Kvartiradagi barcha xonadoshlar ro'yxati\n"
+        "• <code>/leave_flat</code> — Kvartirani tark etish\n\n"
+        "🔹 <b>Navbatchilik (Chores):</b>\n"
+        "• <code>/chores</code> — Bugungi navbatchilar va vazifalar holati\n"
+        "• <code>/add_chore &lt;nomi&gt;</code> — Yangi navbatchilik vazifasi qo'shish\n"
+        "• Har kuni 08:00 da bot navbatchiga eslatma yuboradi. <i>Bajarildi</i> tugmasi bosilgach, navbat avtomatik keyingi talabaga o'tadi.\n\n"
+        "🔹 <b>Xarajatlar (Expenses):</b>\n"
+        "• <code>/add_expense</code> — Umumiy qilingan xarajatni kiritish va teng bo'lish\n"
+        "• <code>/balance</code> — Kim kimga qancha qarz ekanligini ko'rish (Min-Cash-Flow)\n\n"
         "Savollar yoki takliflar bo'lsa, xonadoshlaringiz bilan birgalikda foydalaning!"
     )
     if isinstance(event, CallbackQuery):
         await event.answer()
-        await event.message.answer(text, parse_mode="Markdown")
+        await event.message.answer(text, parse_mode="HTML")
     else:
-        await event.answer(text, parse_mode="Markdown")
+        await event.answer(text, parse_mode="HTML")
 
 
 @router.callback_query(F.data == "cancel_action")

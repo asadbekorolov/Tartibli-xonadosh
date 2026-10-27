@@ -1,5 +1,6 @@
 import logging
 from aiogram import Bot
+from aiogram.html import quote
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
@@ -33,18 +34,22 @@ async def send_morning_chore_reminders(bot: Bot) -> None:
                 continue
 
             try:
+                safe_flat = quote(chore.flat.name)
+                safe_title = quote(chore.title)
+                safe_assignee = quote(chore.current_assignee.full_name)
+
                 text = (
-                    "🌅 **Xayrli tong! Bugungi navbatchilik eslatmasi:**\n\n"
-                    f"🏠 **Kvartira:** {chore.flat.name}\n"
-                    f"📌 **Vazifa:** {chore.title}\n"
-                    f"👤 **Mas'ul:** {chore.current_assignee.full_name}\n\n"
+                    "🌅 <b>Xayrli tong! Bugungi navbatchilik eslatmasi:</b>\n\n"
+                    f"🏠 <b>Kvartira:</b> {safe_flat}\n"
+                    f"📌 <b>Vazifa:</b> {safe_title}\n"
+                    f"👤 <b>Mas'ul:</b> {safe_assignee}\n\n"
                     "Iltimos, vazifani bajarganingizdan so'ng quyidagi tugma orqali tasdiqlang:"
                 )
                 await bot.send_message(
                     chat_id=chore.current_assignee_id,
                     text=text,
                     reply_markup=get_chore_action_kb(chore.id),
-                    parse_mode="Markdown",
+                    parse_mode="HTML",
                 )
             except Exception as e:
                 logger.warning(

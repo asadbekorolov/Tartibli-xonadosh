@@ -1,6 +1,7 @@
 from typing import Optional
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
+from aiogram.html import quote
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.keyboards.common_kb import get_cancel_kb, get_main_menu_kb
@@ -25,9 +26,9 @@ async def cb_create_flat(callback: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(CreateFlatSG.waiting_for_name)
     await callback.message.answer(
         "📝 Kvartirangiz uchun nom kiriting:\n"
-        "(Masalan: *Chilonzor 19-mavze, 42-kvartira* yoki *TTJ 3-bino, 214-xona*)",
+        "(Masalan: <i>Chilonzor 19-mavze, 42-kvartira</i> yoki <i>TTJ 3-bino, 214-xona</i>)",
         reply_markup=get_cancel_kb(),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 
@@ -69,22 +70,24 @@ async def process_flat_address(
             address=address,
         )
     except ValueError as e:
-        await message.answer(f"⚠️ {e}", reply_markup=get_main_menu_kb())
+        await message.answer(f"⚠️ {quote(str(e))}", reply_markup=get_main_menu_kb())
         return
 
     invite_link = f"https://t.me/{settings.BOT_NAME}?start=join_{flat.invite_code}"
-
+    safe_name = quote(flat.name)
+    safe_address = quote(flat.address) if flat.address else "Kiritilmagan"
+    safe_code = quote(flat.invite_code)
 
     await message.answer(
-        f"🎉 **Kvartira muvaffaqiyatli yaratildi!**\n\n"
-        f"🏠 **Nomi:** {flat.name}\n"
-        f"📍 **Manzili:** {flat.address or 'Kiritilmagan'}\n"
-        f"🔑 **Taklif kodi:** `{flat.invite_code}`\n\n"
+        f"🎉 <b>Kvartira muvaffaqiyatli yaratildi!</b>\n\n"
+        f"🏠 <b>Nomi:</b> {safe_name}\n"
+        f"📍 <b>Manzili:</b> {safe_address}\n"
+        f"🔑 <b>Taklif kodi:</b> <code>{safe_code}</code>\n\n"
         f"👥 Xonadoshlaringizni qo'shish uchun ushbu havolani yuboring:\n"
         f"{invite_link}\n\n"
         "Standart navbatchilik vazifalari (oshxona, musor, suv) avtomatik faollashtirildi!",
         reply_markup=get_main_menu_kb(),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 
@@ -96,9 +99,9 @@ async def cb_join_flat(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     await state.set_state(JoinFlatSG.waiting_for_code)
     await callback.message.answer(
-        "🔑 Kvartira taklif kodini kiriting:\n(Masalan: `KV-A1B2C3`)",
+        "🔑 Kvartira taklif kodini kiriting:\n(Masalan: <code>KV-A1B2C3</code>)",
         reply_markup=get_cancel_kb(),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 
@@ -119,18 +122,21 @@ async def process_join_code(
     )
 
     if success and flat:
+        safe_reply = quote(reply_text)
+        safe_name = quote(flat.name)
         await message.answer(
-            f"{reply_text}\n\n"
-            f"🏠 **Kvartira:** {flat.name}\n\n"
+            f"{safe_reply}\n\n"
+            f"🏠 <b>Kvartira:</b> {safe_name}\n\n"
             "Endi siz ham umumiy navbatchilik va xarajatlar ro'yxatidasiz!",
             reply_markup=get_main_menu_kb(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
     else:
+        safe_reply = quote(reply_text)
         await message.answer(
-            f"{reply_text}\nKodni qayta tekshirib ko'ring yoki /start bosing.",
+            f"{safe_reply}\nKodni qayta tekshirib ko'ring yoki /start bosing.",
             reply_markup=get_main_menu_kb(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
 
 
@@ -147,16 +153,18 @@ async def show_members(
         return
 
     members = await FlatRepository.get_members(session, current_flat.id)
+    safe_flat = quote(current_flat.name)
     text_lines = [
-        f"👥 **'{current_flat.name}' kvartirasi a'zolari ({len(members)} kishi):**\n"
+        f"👥 <b>'{safe_flat}' kvartirasi a'zolari ({len(members)} kishi):</b>\n"
     ]
 
     for idx, member in enumerate(members, start=1):
         role_badge = "👑 Admin" if member.role == FlatRole.ADMIN else "👤 Xonadosh"
-        text_lines.append(f"{idx}. {member.user.display_name} — {role_badge}")
+        safe_user = quote(member.user.display_name)
+        text_lines.append(f"{idx}. {safe_user} — {role_badge}")
 
-    text_lines.append(f"\n🔑 Taklif kodi: `{current_flat.invite_code}`")
-    await message.answer("\n".join(text_lines), parse_mode="Markdown")
+    text_lines.append(f"\n🔑 Taklif kodi: <code>{quote(current_flat.invite_code)}</code>")
+    await message.answer("\n".join(text_lines), parse_mode="HTML")
 
 
 @router.message(F.text == "⚙️ Kvartira sozlamalari")
@@ -170,16 +178,19 @@ async def show_settings(
         return
 
     members = await FlatRepository.get_members(session, current_flat.id)
+    safe_name = quote(current_flat.name)
+    safe_address = quote(current_flat.address) if current_flat.address else "Mavjud emas"
+    safe_code = quote(current_flat.invite_code)
     text = (
-        f"⚙️ **Kvartira sozlamalari va ma'lumotlari:**\n\n"
-        f"🏠 **Nomi:** {current_flat.name}\n"
-        f"📍 **Manzili:** {current_flat.address or 'Mavjud emas'}\n"
-        f"👥 **A'zolar soni:** {len(members)} ta\n"
-        f"🔑 **Taklif kodi:** `{current_flat.invite_code}`\n\n"
+        f"⚙️ <b>Kvartira sozlamalari va ma'lumotlari:</b>\n\n"
+        f"🏠 <b>Nomi:</b> {safe_name}\n"
+        f"📍 <b>Manzili:</b> {safe_address}\n"
+        f"👥 <b>A'zolar soni:</b> {len(members)} ta\n"
+        f"🔑 <b>Taklif kodi:</b> <code>{safe_code}</code>\n\n"
         f"Xonadoshlarni taklif qilish uchun quyidagi tugmani bosing:"
     )
     await message.answer(
         text,
         reply_markup=get_flat_settings_kb(current_flat.invite_code, settings.BOT_NAME),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )

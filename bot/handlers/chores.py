@@ -1,5 +1,6 @@
 from aiogram import F, Router
 from aiogram.filters import Command
+from aiogram.html import quote
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from bot.database.crud import (
@@ -32,36 +33,39 @@ async def cmd_list_chores(event: Message | CallbackQuery, session: AsyncSession)
 
     chores = await get_flat_chores(session, user.flat_id)
     if not chores:
-        text = "Kvartirada hozircha navbatchilik vazifalari yo'q. `/add_chore <nomi>` orqali yangi vazifa qo'shishingiz mumkin."
+        text = "Kvartirada hozircha navbatchilik vazifalari yo'q. <code>/add_chore &lt;nomi&gt;</code> orqali yangi vazifa qo'shishingiz mumkin."
         if isinstance(event, CallbackQuery):
             await event.answer()
-            await event.message.answer(text, parse_mode="Markdown")
+            await event.message.answer(text, parse_mode="HTML")
         else:
-            await event.answer(text, parse_mode="Markdown")
+            await event.answer(text, parse_mode="HTML")
         return
 
-    intro = "📋 **Kvartira navbatchilik vazifalari va bugungi mas'ullar:**\n"
+    intro = "📋 <b>Kvartira navbatchilik vazifalari va bugungi mas'ullar:</b>\n"
     if isinstance(event, CallbackQuery):
         await event.answer()
-        await event.message.answer(intro, parse_mode="Markdown")
+        await event.message.answer(intro, parse_mode="HTML")
     else:
-        await event.answer(intro, parse_mode="Markdown")
+        await event.answer(intro, parse_mode="HTML")
 
     for chore in chores:
         assignee_name = chore.current_assignee.full_name if chore.current_assignee else "Tayinlanmagan"
         status_text = "⏳ Kutilmoqda (Bajarilmagan)" if chore.status == "PENDING" else "✅ Bajarilgan"
 
+        safe_title = quote(chore.title)
+        safe_assignee = quote(assignee_name)
+
         text = (
-            f"📌 **{chore.title}**\n"
-            f"👤 **Navbatchi:** {assignee_name}\n"
-            f"📊 **Holati:** {status_text}\n"
+            f"📌 <b>{safe_title}</b>\n"
+            f"👤 <b>Navbatchi:</b> {safe_assignee}\n"
+            f"📊 <b>Holati:</b> {status_text}\n"
             "Vazifani bajarganingizdan so'ng '✅ Bajarildi' tugmasini bosing:"
         )
         msg_target = event.message if isinstance(event, CallbackQuery) else event
         await msg_target.answer(
             text,
             reply_markup=get_chore_action_kb(chore.id),
-            parse_mode="Markdown",
+            parse_mode="HTML",
         )
 
 
@@ -75,18 +79,25 @@ async def cmd_add_chore(message: Message, session: AsyncSession) -> None:
 
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
-        await message.answer("⚠️ Vazifa nomini kiriting:\nMasalan: `/add_chore Oshxona va muzlatgich tozaligi`", parse_mode="Markdown")
+        await message.answer(
+            "⚠️ Vazifa nomini kiriting:\nMasalan: <code>/add_chore Oshxona va muzlatgich tozaligi</code>",
+            parse_mode="HTML",
+        )
         return
 
     title = parts[1].strip()
     chore = await create_chore(session, user.flat_id, title)
+    assignee_name = chore.current_assignee.full_name if chore.current_assignee else "Xonadoshlar"
+
+    safe_title = quote(chore.title)
+    safe_assignee = quote(assignee_name)
 
     await message.answer(
-        f"✅ **Yangi navbatchilik vazifasi qo'shildi!**\n\n"
-        f"📌 **Nomi:** {chore.title}\n"
-        f"👤 **Birinchi navbatchi:** {chore.current_assignee.full_name if chore.current_assignee else 'Xonadoshlar'}\n\n"
+        f"✅ <b>Yangi navbatchilik vazifasi qo'shildi!</b>\n\n"
+        f"📌 <b>Nomi:</b> {safe_title}\n"
+        f"👤 <b>Birinchi navbatchi:</b> {safe_assignee}\n\n"
         "Vazifa bajarilishi bilan navbat avtomatik keyingi talabaga o'tadi.",
-        parse_mode="Markdown",
+        parse_mode="HTML",
     )
 
 
@@ -110,15 +121,20 @@ async def cb_chore_complete(callback: CallbackQuery, session: AsyncSession) -> N
 
     await callback.answer("🎉 Barakalla! Vazifa bajarildi!", show_alert=True)
 
+    safe_title = quote(chore.title)
+    safe_prev_name = quote(prev_name)
+    safe_next_name = quote(next_name)
+    safe_next_mention = quote(next_mention)
+
     text = (
-        f"🌟 **Vazifa muvaffaqiyatli bajarildi!**\n\n"
-        f"📌 **Vazifa:** {chore.title}\n"
-        f"👤 **Bajaruvchi:** {prev_name}\n\n"
-        f"🔄 **Navbat avtomatik keyingi talabaga o'tdi:**\n"
-        f"👉 Yangi mas'ul: **{next_name}** ({next_mention})\n\n"
+        f"🌟 <b>Vazifa muvaffaqiyatli bajarildi!</b>\n\n"
+        f"📌 <b>Vazifa:</b> {safe_title}\n"
+        f"👤 <b>Bajaruvchi:</b> {safe_prev_name}\n\n"
+        f"🔄 <b>Navbat avtomatik keyingi talabaga o'tdi:</b>\n"
+        f"👉 Yangi mas'ul: <b>{safe_next_name}</b> ({safe_next_mention})\n\n"
         "Tartibli hayot uchun rahmat! ✨"
     )
-    await callback.message.edit_text(text, reply_markup=get_chore_action_kb(chore.id), parse_mode="Markdown")
+    await callback.message.edit_text(text, reply_markup=get_chore_action_kb(chore.id), parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("chore_skip:"))
@@ -136,10 +152,13 @@ async def cb_chore_skip(callback: CallbackQuery, session: AsyncSession) -> None:
 
     await callback.answer(f"Navbat {next_name}ga o'tkazildi.", show_alert=True)
 
+    safe_title = quote(chore.title)
+    safe_next_name = quote(next_name)
+
     text = (
-        f"⏭ **Navbat o'tkazib yuborildi.**\n\n"
-        f"📌 **Vazifa:** {chore.title}\n"
-        f"👤 Yangi navbatchi: **{next_name}**\n\n"
+        f"⏭ <b>Navbat o'tkazib yuborildi.</b>\n\n"
+        f"📌 <b>Vazifa:</b> {safe_title}\n"
+        f"👤 Yangi navbatchi: <b>{safe_next_name}</b>\n\n"
         "Iltimos, vazifani bajargach tasdiqlang:"
     )
-    await callback.message.edit_text(text, reply_markup=get_chore_action_kb(chore.id), parse_mode="Markdown")
+    await callback.message.edit_text(text, reply_markup=get_chore_action_kb(chore.id), parse_mode="HTML")

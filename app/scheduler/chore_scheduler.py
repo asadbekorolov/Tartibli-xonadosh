@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from aiogram import Bot
+from aiogram.html import quote
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
@@ -77,11 +78,14 @@ async def run_morning_notification_job(bot: Bot) -> None:
                     continue
 
                 lines = [
-                    f"🌅 **Xayrli tong! Bugungi navbatchilik ro'yxati ({today.strftime('%d.%m.%Y')}):**\n"
+                    f"🌅 <b>Xayrli tong! Bugungi navbatchilik ro'yxati ({today.strftime('%d.%m.%Y')}):</b>\n"
                 ]
                 for idx, a in enumerate(assignments, start=1):
+                    safe_title = quote(a.chore.title)
+                    safe_assignee = quote(a.assignee.display_name)
+                    safe_time = quote(a.chore.execution_time)
                     lines.append(
-                        f"{idx}. 📌 **{a.chore.title}** — {a.assignee.display_name} (⏰ {a.chore.execution_time})"
+                        f"{idx}. 📌 <b>{safe_title}</b> — {safe_assignee} (⏰ {safe_time})"
                     )
                 lines.append("\nKuningiz barakali va unumli o'tsin! ✨")
                 summary_text = "\n".join(lines)
@@ -93,7 +97,7 @@ async def run_morning_notification_job(bot: Bot) -> None:
                             await bot.send_message(
                                 chat_id=member.user_id,
                                 text=summary_text,
-                                parse_mode="Markdown"
+                                parse_mode="HTML"
                             )
                         except Exception as send_err:
                             logger.debug(f"Could not notify member {member.user_id}: {send_err}")
@@ -126,19 +130,23 @@ async def run_evening_reminder_job(bot: Bot) -> None:
 
         for a in pending_assignments:
             try:
+                safe_name = quote(a.assignee.first_name)
+                safe_title = quote(a.chore.title)
+                safe_time = quote(a.chore.execution_time)
+                safe_desc = quote(a.chore.description or "Izoh yo'q")
                 text = (
-                    "🌙 **Kechki eslatma!**\n\n"
-                    f"Salom, **{a.assignee.first_name}**! Bugungi navbatchilik vazifangiz hali yakunlanmagan:\n\n"
-                    f"📌 **Vazifa:** {a.chore.title}\n"
-                    f"⏰ **Belgilangan vaqt:** {a.chore.execution_time}\n"
-                    f"📋 **Izoh:** {a.chore.description or 'Izoh yoq'}\n\n"
+                    "🌙 <b>Kechki eslatma!</b>\n\n"
+                    f"Salom, <b>{safe_name}</b>! Bugungi navbatchilik vazifangiz hali yakunlanmagan:\n\n"
+                    f"📌 <b>Vazifa:</b> {safe_title}\n"
+                    f"⏰ <b>Belgilangan vaqt:</b> {safe_time}\n"
+                    f"📋 <b>Izoh:</b> {safe_desc}\n\n"
                     "Iltimos, vazifani bajargach, quyidagi tugma orqali tasdiqlang:"
                 )
                 await bot.send_message(
                     chat_id=a.assignee_id,
                     text=text,
                     reply_markup=get_chore_actions_kb(a.id, a.status),
-                    parse_mode="Markdown"
+                    parse_mode="HTML"
                 )
             except Exception as e:
                 logger.warning(f"Could not send evening reminder to user {a.assignee_id}: {e}")

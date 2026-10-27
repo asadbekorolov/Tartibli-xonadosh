@@ -36,7 +36,7 @@ async def main() -> None:
     # 2. Initialize Bot instance
     bot = Bot(
         token=settings.BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
 
     # 3. Create Dispatcher with FSM and Routers

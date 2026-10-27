@@ -3,6 +3,7 @@ import re
 from typing import Optional
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
+from aiogram.html import quote
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.keyboards.common_kb import get_cancel_kb, get_main_menu_kb
@@ -22,7 +23,7 @@ router = Router(name="expenses_router")
 # ------------------- ADD EXPENSE FLOW ------------------- #
 
 @router.message(F.text == "➕ Xarajat qo'shish")
-async def start_add_expense(
+async def cmd_add_expense(
     message: Message,
     state: FSMContext,
     current_flat: Optional[Flat]
@@ -34,9 +35,9 @@ async def start_add_expense(
 
     await state.set_state(AddExpenseSG.waiting_for_amount)
     await message.answer(
-        "💰 Xarajat summasini so'mda kiriting:\n(Masalan: `140000` yoki `85000`)",
+        "💰 Xarajat summasini so'mda kiriting:\n(Masalan: <code>140000</code> yoki <code>85000</code>)",
         reply_markup=get_cancel_kb(),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 
@@ -49,7 +50,10 @@ async def process_expense_amount(message: Message, state: FSMContext) -> None:
         if amount <= 0:
             raise ValueError
     except Exception:
-        await message.answer("⚠️ Iltimos, musbat son ko'rinishida summa kiriting (masalan: `120000`):")
+        await message.answer(
+            "⚠️ Iltimos, musbat son ko'rinishida summa kiriting (masalan: <code>120000</code>):",
+            parse_mode="HTML"
+        )
         return
 
     await state.update_data(amount=str(amount))
@@ -67,9 +71,9 @@ async def process_expense_category(callback: CallbackQuery, state: FSMContext) -
     await state.update_data(category=category_val)
     await state.set_state(AddExpenseSG.waiting_for_title)
     await callback.message.answer(
-        "📝 Nima sotib olinganini yozing:\n(Masalan: *Bozorlik (go'sht, guruch, sabzi)* yoki *19L Suv*)",
+        "📝 Nima sotib olinganini yozing:\n(Masalan: <i>Bozorlik (go'sht, guruch, sabzi)</i> yoki <i>19L Suv</i>)",
         reply_markup=get_cancel_kb(),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 
@@ -112,16 +116,19 @@ async def process_expense_title(
         ExpenseCategory.OTHER: "📦 Boshqa",
     }
 
+    safe_title = quote(expense.title)
+    safe_payer = quote(current_user.display_name)
+
     await message.answer(
-        f"🧾 **Yangi xarajat muvaffaqiyatli qo'shildi!**\n\n"
-        f"📌 **Nomi:** {expense.title}\n"
-        f"📂 **Kategoriya:** {category_labels.get(expense.category, expense.category.value)}\n"
-        f"💰 **Umumiy summa:** {int(expense.amount):,} so'm\n"
-        f"👤 **To'ladi:** {current_user.display_name}\n"
-        f"👥 **Taqsimot:** {participant_count} kishiga teng bo'lindi (har biriga ~{int(per_person):,} so'mdan)\n\n"
-        f"📊 Kvartiraning yangilangan hisobini ko'rish uchun **'📊 Kvartira balansi'** tugmasini bosing.",
+        f"🧾 <b>Yangi xarajat muvaffaqiyatli qo'shildi!</b>\n\n"
+        f"📌 <b>Nomi:</b> {safe_title}\n"
+        f"📂 <b>Kategoriya:</b> {category_labels.get(expense.category, expense.category.value)}\n"
+        f"💰 <b>Umumiy summa:</b> {int(expense.amount):,} so'm\n"
+        f"👤 <b>To'ladi:</b> {safe_payer}\n"
+        f"👥 <b>Taqsimot:</b> {participant_count} kishiga teng bo'lindi (har biriga ~{int(per_person):,} so'mdan)\n\n"
+        f"📊 Kvartiraning yangilangan hisobini ko'rish uchun <b>'📊 Kvartira balansi'</b> tugmasini bosing.",
         reply_markup=get_main_menu_kb(),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 
@@ -143,10 +150,11 @@ async def show_ledger_balances(
         flat_id=current_flat.id
     )
 
+    safe_flat = quote(current_flat.name)
     report_lines = [
-        f"📊 **'{current_flat.name}' kvartirasi moliyaviy balansi:**\n",
-        f"💰 **Jami umumiy xarajatlar:** {int(total_spent):,} so'm\n",
-        "👥 **Xonadoshlar holati:**"
+        f"📊 <b>'{safe_flat}' kvartirasi moliyaviy balansi:</b>\n",
+        f"💰 <b>Jami umumiy xarajatlar:</b> {int(total_spent):,} so'm\n",
+        "👥 <b>Xonadoshlar holati:</b>"
     ]
 
     for uid, b in balances.items():
@@ -157,29 +165,34 @@ async def show_ledger_balances(
         else:
             status_text = "⚪️ 0 so'm (Hisobi teng)"
 
-        report_lines.append(f"• **{b.user_name}:** {status_text} | Sarfladi: {int(b.total_paid):,} so'm")
+        safe_name = quote(b.user_name)
+        report_lines.append(f"• <b>{safe_name}:</b> {status_text} | Sarfladi: {int(b.total_paid):,} so'm")
 
     report_lines.append("\n" + "—" * 25 + "\n")
 
     if not simplified_debts:
-        report_lines.append("🎉 **Hozirda hech kimda o'zaro qarz yo'q!** Barcha hisoblar tenglashgan.")
-        await message.answer("\n".join(report_lines), parse_mode="Markdown")
+        report_lines.append("🎉 <b>Hozirda hech kimda o'zaro qarz yo'q!</b> Barcha hisoblar tenglashgan.")
+        await message.answer("\n".join(report_lines), parse_mode="HTML")
         return
 
-    report_lines.append("💳 **O'zaro hisob-kitob (Tavsiya etilgan to'lovlar):**\n")
+    report_lines.append("💳 <b>O'zaro hisob-kitob (Tavsiya etilgan to'lovlar):</b>\n")
     for t in simplified_debts:
+        safe_debtor = quote(t.debtor_name)
+        safe_creditor = quote(t.creditor_name)
         report_lines.append(
-            f"👉 **{t.debtor_name}** ➔ **{t.creditor_name}**ga: `{int(t.amount):,} so'm`"
+            f"👉 <b>{safe_debtor}</b> ➔ <b>{safe_creditor}</b>ga: <code>{int(t.amount):,} so'm</code>"
         )
 
-    await message.answer("\n".join(report_lines), parse_mode="Markdown")
+    await message.answer("\n".join(report_lines), parse_mode="HTML")
 
     # Send interactive settlement buttons for quick clearing
     for t in simplified_debts:
+        safe_debtor = quote(t.debtor_name)
+        safe_creditor = quote(t.creditor_name)
         await message.answer(
-            f"To'lovni tasdiqlash: **{t.debtor_name}** ➔ **{t.creditor_name}** ({int(t.amount):,} so'm):",
+            f"To'lovni tasdiqlash: <b>{safe_debtor}</b> ➔ <b>{safe_creditor}</b> ({int(t.amount):,} so'm):",
             reply_markup=get_settlement_confirm_kb(t.debtor_id, t.creditor_id, t.amount),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
 
 
@@ -212,7 +225,7 @@ async def cb_settle_confirm(
 
     await callback.answer("🤝 To'lov muvaffaqiyatli qayd etildi va hisobdan chiqarildi!", show_alert=True)
     await callback.message.edit_text(
-        f"✅ **Qarz to'liq uzildi!**\n"
+        f"✅ <b>Qarz to'liq uzildi!</b>\n"
         f"Summa: {int(amount):,} so'm to'landi deb belgilandi.",
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )

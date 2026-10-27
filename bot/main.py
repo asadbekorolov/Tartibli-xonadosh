@@ -65,7 +65,7 @@ async def main() -> None:
     # 2. Setup Aiogram Bot
     bot = Bot(
         token=settings.BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN),
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
 
     # 3. Setup FSM Storage (Redis with graceful fallback to In-Memory)

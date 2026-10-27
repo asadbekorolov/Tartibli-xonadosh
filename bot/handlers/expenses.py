@@ -4,6 +4,7 @@ from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.html import quote
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from bot.database.crud import (
@@ -42,15 +43,15 @@ async def cmd_add_expense(event: Message | CallbackQuery, state: FSMContext, ses
 
     await state.set_state(AddExpenseSG.waiting_for_amount)
     text = (
-        "💰 **Xarajat qo'shish:**\n\n"
+        "💰 <b>Xarajat qo'shish:</b>\n\n"
         "Xarid summasini so'mda kiriting:\n"
-        "*(Masalan: `160000` yoki `85000`)*"
+        "<i>(Masalan: <code>160000</code> yoki <code>85000</code>)</i>"
     )
     if isinstance(event, CallbackQuery):
         await event.answer()
-        await event.message.answer(text, reply_markup=get_cancel_kb(), parse_mode="Markdown")
+        await event.message.answer(text, reply_markup=get_cancel_kb(), parse_mode="HTML")
     else:
-        await event.answer(text, reply_markup=get_cancel_kb(), parse_mode="Markdown")
+        await event.answer(text, reply_markup=get_cancel_kb(), parse_mode="HTML")
 
 
 @router.message(AddExpenseSG.waiting_for_amount)
@@ -61,15 +62,18 @@ async def process_expense_amount(message: Message, state: FSMContext) -> None:
         if amount <= Decimal("0"):
             raise ValueError
     except Exception:
-        await message.answer("⚠️ Iltimos, musbat son ko'rinishida summa kiriting (masalan: `150000`):")
+        await message.answer(
+            "⚠️ Iltimos, musbat son ko'rinishida summa kiriting (masalan: <code>150000</code>):",
+            parse_mode="HTML",
+        )
         return
 
     await state.update_data(amount=str(amount))
     await state.set_state(AddExpenseSG.waiting_for_title)
     await message.answer(
-        "📝 Nima xarid qilinganini yozing:\n*(Masalan: 'Bozorlik: go'sht, yog', kartoshka' yoki 'Wi-Fi to'lovi')*",
+        "📝 Nima xarid qilinganini yozing:\n<i>(Masalan: 'Bozorlik: go'sht, yog', kartoshka' yoki 'Wi-Fi to'lovi')</i>",
         reply_markup=get_cancel_kb(),
-        parse_mode="Markdown",
+        parse_mode="HTML",
     )
 
 
@@ -98,15 +102,18 @@ async def process_expense_title(message: Message, state: FSMContext, session: As
 
     per_person = int(amount // member_count) if member_count else int(amount)
 
+    safe_title = quote(expense.title)
+    safe_payer = quote(user.full_name)
+
     text = (
-        f"🧾 **Xarajat muvaffaqiyatli qayd etildi!**\n\n"
-        f"📌 **Nomi:** {expense.title}\n"
-        f"💰 **Jami summa:** {int(amount):,} so'm\n"
-        f"👤 **To'lovchi:** {user.full_name}\n"
-        f"👥 **Taqsimot:** {member_count} kishiga teng taqsimlandi (~{per_person:,} so'mdan)\n\n"
-        "Balansni ko'rish uchun `/balance` buyrug'ini yuboring."
+        f"🧾 <b>Xarajat muvaffaqiyatli qayd etildi!</b>\n\n"
+        f"📌 <b>Nomi:</b> {safe_title}\n"
+        f"💰 <b>Jami summa:</b> {int(amount):,} so'm\n"
+        f"👤 <b>To'lovchi:</b> {safe_payer}\n"
+        f"👥 <b>Taqsimot:</b> {member_count} kishiga teng taqsimlandi (~{per_person:,} so'mdan)\n\n"
+        "Balansni ko'rish uchun <code>/balance</code> buyrug'ini yuboring."
     )
-    await message.answer(text, parse_mode="Markdown")
+    await message.answer(text, parse_mode="HTML")
 
 
 # ------------------- VIEW BALANCES & SETTLE ------------------- #
@@ -129,9 +136,9 @@ async def cmd_balance(event: Message | CallbackQuery, session: AsyncSession) -> 
     balances, transfers, total_spent = await DebtOptimizer.get_flat_ledger(session, user.flat_id)
 
     report_lines = [
-        "📊 **Kvartira umumiy moliyaviy balansi:**\n",
-        f"💰 **Jami umumiy xarajatlar:** {int(total_spent):,} so'm\n",
-        "👥 **Xonadoshlar hisobi:**",
+        "📊 <b>Kvartira umumiy moliyaviy balansi:</b>\n",
+        f"💰 <b>Jami umumiy xarajatlar:</b> {int(total_spent):,} so'm\n",
+        "👥 <b>Xonadoshlar hisobi:</b>",
     ]
 
     for uid, b in balances.items():
@@ -142,37 +149,42 @@ async def cmd_balance(event: Message | CallbackQuery, session: AsyncSession) -> 
         else:
             status_text = "⚪️ 0 so'm (Hisobi teng)"
 
-        report_lines.append(f"• **{b.user_name}:** {status_text} | Sarfladi: {int(b.total_paid):,} so'm")
+        safe_name = quote(b.user_name)
+        report_lines.append(f"• <b>{safe_name}:</b> {status_text} | Sarfladi: {int(b.total_paid):,} so'm")
 
     report_lines.append("\n" + "—" * 25 + "\n")
 
     if not transfers:
-        report_lines.append("🎉 **Hozirda hech kim qarzdor emas!** Barcha hisoblar tenglashgan.")
+        report_lines.append("🎉 <b>Hozirda hech kim qarzdor emas!</b> Barcha hisoblar tenglashgan.")
         summary_text = "\n".join(report_lines)
         if isinstance(event, CallbackQuery):
             await event.answer()
-            await event.message.answer(summary_text, parse_mode="Markdown")
+            await event.message.answer(summary_text, parse_mode="HTML")
         else:
-            await event.answer(summary_text, parse_mode="Markdown")
+            await event.answer(summary_text, parse_mode="HTML")
         return
 
-    report_lines.append("💳 **Qarzlarni yopish bo'yicha tavsiyalar (Min-Cash-Flow):**\n")
+    report_lines.append("💳 <b>Qarzlarni yopish bo'yicha tavsiyalar (Min-Cash-Flow):</b>\n")
     for t in transfers:
-        report_lines.append(f"👉 **{t.debtor_name}** ➔ **{t.creditor_name}**ga: `{int(t.amount):,} so'm`")
+        safe_debtor = quote(t.debtor_name)
+        safe_creditor = quote(t.creditor_name)
+        report_lines.append(f"👉 <b>{safe_debtor}</b> ➔ <b>{safe_creditor}</b>ga: <code>{int(t.amount):,} so'm</code>")
 
     summary_text = "\n".join(report_lines)
     msg_target = event.message if isinstance(event, CallbackQuery) else event
     if isinstance(event, CallbackQuery):
         await event.answer()
 
-    await msg_target.answer(summary_text, parse_mode="Markdown")
+    await msg_target.answer(summary_text, parse_mode="HTML")
 
     # Send one-tap settlement confirmation buttons
     for t in transfers:
+        safe_debtor = quote(t.debtor_name)
+        safe_creditor = quote(t.creditor_name)
         await msg_target.answer(
-            f"To'lovni tasdiqlash: **{t.debtor_name}** ➔ **{t.creditor_name}** ({int(t.amount):,} so'm):",
+            f"To'lovni tasdiqlash: <b>{safe_debtor}</b> ➔ <b>{safe_creditor}</b> ({int(t.amount):,} so'm):",
             reply_markup=get_settlement_kb(t.debtor_id, t.creditor_id, t.amount),
-            parse_mode="Markdown",
+            parse_mode="HTML",
         )
 
 
@@ -199,6 +211,6 @@ async def cb_settle(callback: CallbackQuery, session: AsyncSession) -> None:
 
     await callback.answer("🤝 To'lov muvaffaqiyatli tasdiqlandi va hisobdan chiqarildi!", show_alert=True)
     await callback.message.edit_text(
-        f"✅ **Qarz yopildi!**\nSumma: {int(amount):,} so'm to'landi deb qayd etildi.",
-        parse_mode="Markdown",
+        f"✅ <b>Qarz yopildi!</b>\nSumma: {int(amount):,} so'm to'landi deb qayd etildi.",
+        parse_mode="HTML",
     )

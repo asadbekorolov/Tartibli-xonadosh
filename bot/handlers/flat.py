@@ -5,6 +5,7 @@ from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.html import quote
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from bot.config import get_settings
@@ -61,15 +62,15 @@ async def cmd_create_flat(event: Message | CallbackQuery, state: FSMContext, ses
 
     await state.set_state(CreateFlatSG.waiting_for_name)
     text = (
-        "🏠 **Yangi kvartira ochish:**\n\n"
+        "🏠 <b>Yangi kvartira ochish:</b>\n\n"
         "Kvartirangiz uchun nom kiriting:\n"
-        "*(Masalan: 'Chilonzor 19, 42-kvartira' yoki 'TTJ 2-bino 315-xona')*"
+        "<i>(Masalan: 'Chilonzor 19, 42-kvartira' yoki 'TTJ 2-bino 315-xona')</i>"
     )
     if isinstance(event, CallbackQuery):
         await event.answer()
-        await event.message.answer(text, reply_markup=get_cancel_kb(), parse_mode="Markdown")
+        await event.message.answer(text, reply_markup=get_cancel_kb(), parse_mode="HTML")
     else:
-        await event.answer(text, reply_markup=get_cancel_kb(), parse_mode="Markdown")
+        await event.answer(text, reply_markup=get_cancel_kb(), parse_mode="HTML")
 
 
 @router.message(CreateFlatSG.waiting_for_name)
@@ -91,10 +92,12 @@ async def process_create_flat_name(message: Message, state: FSMContext, session:
     )
 
     share_url = f"https://t.me/{settings.BOT_NAME}?start=join_{flat.invite_code}"
+    safe_name = quote(flat.name)
+    safe_code = quote(flat.invite_code)
 
     text = (
-        f"🎉 **'{flat.name}' kvartirasi muvaffaqiyatli yaratildi!**\n\n"
-        f"🔑 **Taklif kodi:** `{flat.invite_code}`\n\n"
+        f"🎉 <b>'{safe_name}' kvartirasi muvaffaqiyatli yaratildi!</b>\n\n"
+        f"🔑 <b>Taklif kodi:</b> <code>{safe_code}</code>\n\n"
         "👥 Xonadoshlaringizni qo'shish uchun ushbu havolani ulashing:\n"
         f"{share_url}\n\n"
         "Standart navbatchilik vazifalari (Oshxona, Musor, Suv) avtomatik ishga tushirildi!"
@@ -102,7 +105,7 @@ async def process_create_flat_name(message: Message, state: FSMContext, session:
     await message.answer(
         text,
         reply_markup=get_flat_dashboard_kb(flat.invite_code, settings.BOT_NAME),
-        parse_mode="Markdown",
+        parse_mode="HTML",
     )
 
 
@@ -134,24 +137,27 @@ async def cmd_join_flat(event: Message | CallbackQuery, state: FSMContext, sessi
                 return
             success, reply_msg = await join_flat(session, user_id, flat.id)
             if success:
+                safe_name = quote(flat.name)
+                safe_code = quote(flat.invite_code)
+                safe_msg = quote(reply_msg)
                 await event.answer(
-                    f"🎉 **{reply_msg}**\n\n"
-                    f"🏠 **Kvartira:** {flat.name}\n"
-                    f"🔑 **Taklif kodi:** `{flat.invite_code}`",
+                    f"🎉 <b>{safe_msg}</b>\n\n"
+                    f"🏠 <b>Kvartira:</b> {safe_name}\n"
+                    f"🔑 <b>Taklif kodi:</b> <code>{safe_code}</code>",
                     reply_markup=get_flat_dashboard_kb(flat.invite_code, settings.BOT_NAME),
-                    parse_mode="Markdown",
+                    parse_mode="HTML",
                 )
             else:
-                await event.answer(f"⚠️ {reply_msg}")
+                await event.answer(f"⚠️ {quote(reply_msg)}")
             return
 
     await state.set_state(JoinFlatSG.waiting_for_code)
-    text = "🔑 Kvartiraga qo'shilish uchun taklif kodini kiriting:\n*(Masalan: `KV-9B4X2A`)*"
+    text = "🔑 Kvartiraga qo'shilish uchun taklif kodini kiriting:\n<i>(Masalan: <code>KV-9B4X2A</code>)</i>"
     if isinstance(event, CallbackQuery):
         await event.answer()
-        await event.message.answer(text, reply_markup=get_cancel_kb(), parse_mode="Markdown")
+        await event.message.answer(text, reply_markup=get_cancel_kb(), parse_mode="HTML")
     else:
-        await event.answer(text, reply_markup=get_cancel_kb(), parse_mode="Markdown")
+        await event.answer(text, reply_markup=get_cancel_kb(), parse_mode="HTML")
 
 
 @router.message(JoinFlatSG.waiting_for_code)
@@ -168,15 +174,18 @@ async def process_join_flat_code(message: Message, state: FSMContext, session: A
     await state.clear()
     success, reply_msg = await join_flat(session, message.from_user.id, flat.id)
     if success:
+        safe_name = quote(flat.name)
+        safe_code = quote(flat.invite_code)
+        safe_msg = quote(reply_msg)
         await message.answer(
-            f"🎉 **{reply_msg}**\n\n"
-            f"🏠 **Kvartira:** {flat.name}\n"
-            f"🔑 **Taklif kodi:** `{flat.invite_code}`",
+            f"🎉 <b>{safe_msg}</b>\n\n"
+            f"🏠 <b>Kvartira:</b> {safe_name}\n"
+            f"🔑 <b>Taklif kodi:</b> <code>{safe_code}</code>",
             reply_markup=get_flat_dashboard_kb(flat.invite_code, settings.BOT_NAME),
-            parse_mode="Markdown",
+            parse_mode="HTML",
         )
     else:
-        await message.answer(f"⚠️ {reply_msg}", reply_markup=get_start_unregistered_kb())
+        await message.answer(f"⚠️ {quote(reply_msg)}", reply_markup=get_start_unregistered_kb())
 
 
 # ------------------- MEMBERS & LEAVE ------------------- #
@@ -199,19 +208,22 @@ async def cmd_members(event: Message | CallbackQuery, session: AsyncSession) -> 
     members = await get_flat_members(session, user.flat_id)
     flat = await get_flat_by_id(session, user.flat_id)
 
-    lines = [f"👥 **'{flat.name}' kvartirasi a'zolari ({len(members)}/{flat.max_members} kishi):**\n"]
+    safe_flat_name = quote(flat.name)
+    lines = [f"👥 <b>'{safe_flat_name}' kvartirasi a'zolari ({len(members)}/{flat.max_members} kishi):</b>\n"]
     for idx, m in enumerate(members, start=1):
         creator_badge = " 👑 (Admin)" if m.id == flat.creator_id else ""
-        lines.append(f"{idx}. **{m.full_name}** ({m.mention}){creator_badge}")
+        safe_full_name = quote(m.full_name)
+        safe_mention = quote(m.mention)
+        lines.append(f"{idx}. <b>{safe_full_name}</b> ({safe_mention}){creator_badge}")
 
-    lines.append(f"\n🔑 Taklif kodi: `{flat.invite_code}`")
+    lines.append(f"\n🔑 Taklif kodi: <code>{quote(flat.invite_code)}</code>")
     reply_text = "\n".join(lines)
 
     if isinstance(event, CallbackQuery):
         await event.answer()
-        await event.message.answer(reply_text, parse_mode="Markdown")
+        await event.message.answer(reply_text, parse_mode="HTML")
     else:
-        await event.answer(reply_text, parse_mode="Markdown")
+        await event.answer(reply_text, parse_mode="HTML")
 
 
 @router.message(Command("leave_flat"))

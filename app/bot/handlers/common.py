@@ -2,6 +2,7 @@ from typing import Optional
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
+from aiogram.html import quote
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.keyboards.common_kb import get_main_menu_kb
@@ -36,37 +37,42 @@ async def cmd_start(
             invite_code=invite_code,
         )
         if success and flat:
+            safe_name = quote(flat.name)
+            safe_reply = quote(reply_text)
             await message.answer(
-                f"🏠 **{flat.name}** kvartirasiga xush kelibsiz!\n\n"
-                f"{reply_text}\n\n"
+                f"🏠 <b>{safe_name}</b> kvartirasiga xush kelibsiz!\n\n"
+                f"{safe_reply}\n\n"
                 "Quyidagi menyu orqali navbatchilik va xarajatlarni boshqarishingiz mumkin:",
                 reply_markup=get_main_menu_kb(),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
             return
         else:
-            await message.answer(reply_text, parse_mode="Markdown")
+            await message.answer(quote(reply_text), parse_mode="HTML")
 
     # Regular start flow
     if current_flat:
+        safe_user = quote(current_user.first_name)
+        safe_flat = quote(current_flat.name)
         await message.answer(
-            f"Assalomu alaykum, **{current_user.first_name}**!\n\n"
-            f"🏠 Siz hozirda **{current_flat.name}** kvartirasi boshqaruvidasiz.\n"
+            f"Assalomu alaykum, <b>{safe_user}</b>!\n\n"
+            f"🏠 Siz hozirda <b>{safe_flat}</b> kvartirasi boshqaruvidasiz.\n"
             "Kerakli bo'limni tanlang:",
             reply_markup=get_main_menu_kb(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
     else:
+        safe_user = quote(current_user.first_name)
         await message.answer(
-            f"Assalomu alaykum, **{current_user.first_name}**!\n\n"
-            "🌟 **'Talabalar Kvartira Boshqaruvi'** tizimiga xush kelibsiz!\n\n"
+            f"Assalomu alaykum, <b>{safe_user}</b>!\n\n"
+            "🌟 <b>'Talabalar Kvartira Boshqaruvi'</b> tizimiga xush kelibsiz!\n\n"
             "Bu bot orqali siz xonadoshlaringiz bilan birga:\n"
             "🔹 Kunlik navbatchilikni (tozalash, musor, suv) adolatli taqsimlaysiz\n"
             "🔹 Umumiy oziq-ovqat va kommunal xarajatlarni hisoblab borasiz\n"
             "🔹 Kim kimga qancha qarz ekanligini avtomatik soddalashtirasiz\n\n"
             "Boshlash uchun yangi kvartira yarating yoki xonadoshingiz bergan kod bilan qo'shiling:",
             reply_markup=get_welcome_kb(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
 
 
@@ -96,16 +102,16 @@ async def cmd_cancel(
 async def cmd_help(message: Message) -> None:
     """Provides user guide and workflow instructions."""
     text = (
-        "📚 **Foydalanish bo'yicha qo'llanma:**\n\n"
-        "1️⃣ **Navbatchilik:**\n"
+        "📚 <b>Foydalanish bo'yicha qo'llanma:</b>\n\n"
+        "1️⃣ <b>Navbatchilik:</b>\n"
         "• Har kuni navbat avtomatik ravishda keyingi xonadoshga o'tadi (Round-robin).\n"
         "• Belgilangan vaqtda bot navbatchiga eslatma yuboradi.\n"
-        "• Vazifani bajargach, `✅ Bajarildi` tugmasini bosing.\n\n"
-        "2️⃣ **Xarajatlar va Qarzlar:**\n"
-        "• Umumiy bozorlik yoki to'lov qilganingizda `➕ Xarajat qo'shish` tugmasi orqali kiriting.\n"
+        "• Vazifani bajargach, <code>✅ Bajarildi</code> tugmasini bosing.\n\n"
+        "2️⃣ <b>Xarajatlar va Qarzlar:</b>\n"
+        "• Umumiy bozorlik yoki to'lov qilganingizda <code>➕ Xarajat qo'shish</code> tugmasi orqali kiriting.\n"
         "• Bot summani barcha xonadoshlarga teng bo'lib, har kimning hisobiga yozib boradi.\n"
-        "• `📊 Kvartira balansi` bo'limida kim qancha sarflagani va kim kimga qancha qarz ekanligi ko'rinadi.\n\n"
-        "3️⃣ **Yangi a'zolar:**\n"
-        "• `⚙️ Kvartira sozlamalari` orqali taklif havolasini olib, yangi xonadoshni qo'shishingiz mumkin."
+        "• <code>📊 Kvartira balansi</code> bo'limida kim qancha sarflagani va kim kimga qancha qarz ekanligi ko'rinadi.\n\n"
+        "3️⃣ <b>Yangi a'zolar:</b>\n"
+        "• <code>⚙️ Kvartira sozlamalari</code> orqali taklif havolasini olib, yangi xonadoshni qo'shishingiz mumkin."
     )
-    await message.answer(text, parse_mode="Markdown")
+    await message.answer(text, parse_mode="HTML")
