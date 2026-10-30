@@ -19,8 +19,8 @@ async def cmd_start(
     message: Message,
     state: FSMContext,
     session: AsyncSession,
-    current_user: User,
-    current_flat: Optional[Flat],
+    current_user: Optional[User] = None,
+    current_flat: Optional[Flat] = None,
 ) -> None:
     """
     Handles /start command with deep linking support (e.g. /start join_KV_XXXXX).
@@ -28,12 +28,21 @@ async def cmd_start(
     await state.clear()
     command_args = message.text.split()[1] if len(message.text.split()) > 1 else ""
 
+    # Safe user name resolution with fallback
+    user_name = (
+        current_user.first_name
+        if current_user and current_user.first_name
+        else (message.from_user.first_name if message.from_user and message.from_user.first_name else "Foydalanuvchi")
+    )
+    safe_user = escape(user_name)
+    user_id = current_user.id if current_user else (message.from_user.id if message.from_user else 0)
+
     # Check for deep-link invite code (e.g. /start join_KV-9B4X2A or /start KV-9B4X2A)
     invite_code = OnboardingService.parse_deep_link_payload(command_args)
     if invite_code:
         success, reply_text, flat = await OnboardingService.join_flat_by_invite(
             session=session,
-            user_id=current_user.id,
+            user_id=user_id,
             invite_code=invite_code,
         )
         if success and flat:
@@ -52,7 +61,6 @@ async def cmd_start(
 
     # Regular start flow
     if current_flat:
-        safe_user = escape(current_user.first_name)
         safe_flat = escape(current_flat.name)
         await message.answer(
             f"Assalomu alaykum, <b>{safe_user}</b>!\n\n"
@@ -62,7 +70,6 @@ async def cmd_start(
             parse_mode="HTML"
         )
     else:
-        safe_user = escape(current_user.first_name)
         await message.answer(
             f"Assalomu alaykum, <b>{safe_user}</b>!\n\n"
             "🌟 <b>'Talabalar Kvartira Boshqaruvi'</b> tizimiga xush kelibsiz!\n\n"

@@ -53,7 +53,7 @@ async def process_flat_address(
     message: Message,
     state: FSMContext,
     session: AsyncSession,
-    current_user: User
+    current_user: Optional[User] = None
 ) -> None:
     address_text = message.text.strip()
     address = None if address_text == "-" else address_text
@@ -62,11 +62,13 @@ async def process_flat_address(
     flat_name = data["flat_name"]
     await state.clear()
 
+    user_id = current_user.id if current_user else (message.from_user.id if message.from_user else 0)
+
     # Create flat and seed initial default student chores
     try:
         flat = await OnboardingService.create_flat_for_user(
             session=session,
-            creator_id=current_user.id,
+            creator_id=user_id,
             flat_name=flat_name,
             address=address,
         )
@@ -111,14 +113,16 @@ async def process_join_code(
     message: Message,
     state: FSMContext,
     session: AsyncSession,
-    current_user: User
+    current_user: Optional[User] = None
 ) -> None:
     invite_code = message.text.strip()
     await state.clear()
 
+    user_id = current_user.id if current_user else (message.from_user.id if message.from_user else 0)
+
     success, reply_text, flat = await OnboardingService.join_flat_by_invite(
         session=session,
-        user_id=current_user.id,
+        user_id=user_id,
         invite_code=invite_code,
     )
 

@@ -83,8 +83,8 @@ async def process_expense_title(
     message: Message,
     state: FSMContext,
     session: AsyncSession,
-    current_user: User,
-    current_flat: Optional[Flat],
+    current_user: Optional[User] = None,
+    current_flat: Optional[Flat] = None,
 ) -> None:
     title = message.text.strip()
     data = await state.get_data()
@@ -96,11 +96,12 @@ async def process_expense_title(
 
     amount = Decimal(data["amount"])
     category = ExpenseCategory(data["category"])
+    user_id = current_user.id if current_user else (message.from_user.id if message.from_user else 0)
 
     expense = await ExpenseService.add_communal_expense(
         session=session,
         flat_id=current_flat.id,
-        payer_id=current_user.id,
+        payer_id=user_id,
         title=title,
         category=category,
         amount=amount,
@@ -118,7 +119,12 @@ async def process_expense_title(
     }
 
     safe_title = escape(expense.title)
-    safe_payer = escape(current_user.display_name)
+    payer_name = (
+        current_user.display_name
+        if current_user
+        else (message.from_user.full_name if message.from_user else "Xonadosh")
+    )
+    safe_payer = escape(payer_name)
 
     await message.answer(
         f"🧾 <b>Yangi xarajat muvaffaqiyatli qo'shildi!</b>\n\n"

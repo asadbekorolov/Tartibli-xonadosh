@@ -16,15 +16,16 @@ class UserRepository:
     async def upsert(
         session: AsyncSession,
         user_id: int,
-        first_name: str,
+        first_name: Optional[str] = None,
         username: Optional[str] = None,
         last_name: Optional[str] = None,
         phone_number: Optional[str] = None,
     ) -> User:
         """Create or update user details upon bot interaction."""
+        safe_first_name = first_name or "Foydalanuvchi"
         user = await UserRepository.get_by_id(session, user_id)
         if user:
-            user.first_name = first_name
+            user.first_name = safe_first_name
             user.username = username
             user.last_name = last_name
             if phone_number:
@@ -33,7 +34,7 @@ class UserRepository:
             user = User(
                 id=user_id,
                 username=username,
-                first_name=first_name,
+                first_name=safe_first_name,
                 last_name=last_name,
                 phone_number=phone_number,
                 is_active=True
