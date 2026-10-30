@@ -6,7 +6,8 @@ from app.models.expense import (
     Settlement,
     SettlementStatus,
 )
-from app.models.flat import Flat, FlatMember, FlatRole
+from app.models.flat import Flat, FlatMember, FlatRole, FlatTemplateType
+from app.models.fund import FundTransaction, TransactionType
 from app.models.user import User
 
 __all__ = [
@@ -14,14 +15,16 @@ __all__ = [
     "Flat",
     "FlatMember",
     "FlatRole",
+    "FlatTemplateType",
     "Chore",
     "ChoreAssignment",
     "RotationType",
     "ChoreStatus",
+    "FundTransaction",
+    "TransactionType",
     "Expense",
     "ExpenseCategory",
     "ExpenseParticipant",
     "Settlement",
     "SettlementStatus",
 ]
-

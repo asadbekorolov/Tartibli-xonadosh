@@ -16,6 +16,8 @@ class ChoreRepository:
         rotation_type: RotationType = RotationType.ROUND_ROBIN,
         frequency_days: int = 1,
         execution_time: str = "20:00",
+        checklist: Optional[List[str]] = None,
+        assignee_ids: Optional[List[int]] = None,
     ) -> Chore:
         chore = Chore(
             flat_id=flat_id,
@@ -25,6 +27,8 @@ class ChoreRepository:
             frequency_days=frequency_days,
             execution_time=execution_time,
             current_member_index=0,
+            checklist=checklist,
+            assignee_ids=assignee_ids,
             is_active=True
         )
         session.add(chore)
@@ -109,14 +113,16 @@ class ChoreRepository:
         session: AsyncSession,
         chore_id: int,
         flat_id: int,
-        assignee_id: int,
+        assignee_id: Optional[int],
         due_date: date,
+        assignee_ids: Optional[List[int]] = None,
         status: ChoreStatus = ChoreStatus.PENDING
     ) -> ChoreAssignment:
         assignment = ChoreAssignment(
             chore_id=chore_id,
             flat_id=flat_id,
             assignee_id=assignee_id,
+            assignee_ids=assignee_ids,
             due_date=due_date,
             status=status
         )

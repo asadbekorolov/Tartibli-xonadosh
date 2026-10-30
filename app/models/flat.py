@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 from enum import Enum
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -8,6 +9,7 @@ from sqlalchemy import (
     Enum as SQLEnum,
     ForeignKey,
     Integer,
+    Numeric,
     String,
     UniqueConstraint,
 )
@@ -18,6 +20,7 @@ if TYPE_CHECKING:
     from app.models.user import User
     from app.models.chore import Chore, ChoreAssignment
     from app.models.expense import Expense, Settlement
+    from app.models.fund import FundTransaction
 
 
 class FlatRole(str, Enum):
@@ -25,19 +28,43 @@ class FlatRole(str, Enum):
     MEMBER = "MEMBER"
 
 
+class FlatTemplateType(str, Enum):
+    LARGE_FLAT = "LARGE_FLAT"        # Katta Kvartira (6–10 kishi)
+    COMPACT_FLAT = "COMPACT_FLAT"    # Ixcham Kvartira (2–5 kishi)
+    DORMITORY = "DORMITORY"          # TTJ / Yotoqxona
+    CUSTOM = "CUSTOM"                # Shaxsiy (Custom)
+
+
 class Flat(Base, TimestampMixin):
     """
-    Shared apartment or dormitory room entity (typically 7-8 students).
+    Shared apartment or dormitory room entity (typically 2-10 students).
     """
     __tablename__ = "flats"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    address: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     invite_code: Mapped[str] = mapped_column(String(32), unique=True, index=True, nullable=False)
     created_by_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
     max_members: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Multi-tenant presets & communal fund settings
+    template_type: Mapped[FlatTemplateType] = mapped_column(
+        SQLEnum(FlatTemplateType, name="flat_template_type_enum"),
+        default=FlatTemplateType.LARGE_FLAT,
+        nullable=False,
+    )
+    fund_balance: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2),
+        default=Decimal("0.00"),
+        nullable=False,
+    )
+    quiet_hours_start: Mapped[str] = mapped_column(
+        String(5),
+        default="22:30",
+        nullable=False,
+    )
 
     @property
     def status(self) -> str:
@@ -54,6 +81,11 @@ class Flat(Base, TimestampMixin):
     chore_assignments: Mapped[List["ChoreAssignment"]] = relationship(
         "ChoreAssignment", back_populates="flat", cascade="all, delete-orphan"
     )
+    fund_transactions: Mapped[List["FundTransaction"]] = relationship(
+        "FundTransaction", back_populates="flat", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+    # Deprecated pairwise ledger relationships (kept for schema compatibility)
     expenses: Mapped[List["Expense"]] = relationship(
         "Expense", back_populates="flat", cascade="all, delete-orphan"
     )
@@ -62,7 +94,7 @@ class Flat(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:
-        return f"<Flat id={self.id} name='{self.name}' invite_code='{self.invite_code}'>"
+        return f"<Flat id={self.id} name='{self.name}' template={self.template_type} balance={self.fund_balance}>"
 
 
 class FlatMember(Base, TimestampMixin):

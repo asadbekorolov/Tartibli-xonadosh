@@ -51,7 +51,7 @@ async def cmd_start(
             await message.answer(
                 f"🏠 <b>{safe_name}</b> kvartirasiga xush kelibsiz!\n\n"
                 f"{safe_reply}\n\n"
-                "Quyidagi menyu orqali navbatchilik va xarajatlarni boshqarishingiz mumkin:",
+                "Quyidagi menyu orqali navbatchilik va kassa-bozorlikni boshqarishingiz mumkin:",
                 reply_markup=get_main_menu_kb(),
                 parse_mode="HTML"
             )
@@ -72,11 +72,11 @@ async def cmd_start(
     else:
         await message.answer(
             f"Assalomu alaykum, <b>{safe_user}</b>!\n\n"
-            "🌟 <b>'Talabalar Kvartira Boshqaruvi'</b> tizimiga xush kelibsiz!\n\n"
+            "🌟 <b>'Tartibli Xonadosh'</b> tizimiga xush kelibsiz!\n\n"
             "Bu bot orqali siz xonadoshlaringiz bilan birga:\n"
-            "🔹 Kunlik navbatchilikni (tozalash, musor, suv) adolatli taqsimlaysiz\n"
-            "🔹 Umumiy oziq-ovqat va kommunal xarajatlarni hisoblab borasiz\n"
-            "🔹 Kim kimga qancha qarz ekanligini avtomatik soddalashtirasiz\n\n"
+            "🔹 Kunlik va haftalik navbatchilikni (oshxona, 10L suv, juftlik tozalash) adolatli taqsimlaysiz\n"
+            "🔹 Umumiy bozorlik va kassa zaxirasini shaffof boshqarasiz\n"
+            "🔹 Kvartira qoidalariga (22:30 tinchlik soati, idish yuvish tartibi) amal qilasiz\n\n"
             "Boshlash uchun yangi kvartira yarating yoki xonadoshingiz bergan kod bilan qo'shiling:",
             reply_markup=get_welcome_kb(),
             parse_mode="HTML"
@@ -112,15 +112,17 @@ async def cmd_help(message: Message) -> None:
     """Provides user guide and workflow instructions."""
     text = (
         "📚 <b>Foydalanish bo'yicha qo'llanma:</b>\n\n"
-        "1️⃣ <b>Navbatchilik:</b>\n"
-        "• Har kuni navbat avtomatik ravishda keyingi xonadoshga o'tadi (Round-robin).\n"
-        "• Belgilangan vaqtda bot navbatchiga eslatma yuboradi.\n"
+        "1️⃣ <b>Navbatchilik (Chores):</b>\n"
+        "• Har kuni navbat avtomatik tarzda xonadoshlar o'rtasida aylanadi (Round-robin va Juftlik navbatchiligi).\n"
+        "• 10L toza suv, oshxona, haftalik 11 bosqichli tozalash bo'yicha bot eslatib boradi.\n"
         "• Vazifani bajargach, <code>✅ Bajarildi</code> tugmasini bosing.\n\n"
-        "2️⃣ <b>Xarajatlar va Qarzlar:</b>\n"
-        "• Umumiy bozorlik yoki to'lov qilganingizda <code>➕ Xarajat qo'shish</code> tugmasi orqali kiriting.\n"
-        "• Bot summani barcha xonadoshlarga teng bo'lib, har kimning hisobiga yozib boradi.\n"
-        "• <code>📊 Kvartira balansi</code> bo'limida kim qancha sarflagani va kim kimga qancha qarz ekanligi ko'rinadi.\n\n"
-        "3️⃣ <b>Yangi a'zolar:</b>\n"
-        "• <code>⚙️ Kvartira sozlamalari</code> orqali taklif havolasini olib, yangi xonadoshni qo'shishingiz mumkin."
+        "2️⃣ <b>Bozorlik va Umumiy Kassa:</b>\n"
+        "• Murakkab o'zaro qarzdorlik o'rniga yagona umumiy kassa tizimi joriy qilingan.\n"
+        "• <code>📥 Pul yig'ish</code> orqali barcha xonadoshlardan teng mablag' yig'iladi.\n"
+        "• Bozorlik qilinganda <code>🧾 Xarid kiritish</code> orqali chek summasi (masalan, 370 293 so'm) kiritiladi va kassadan avtomatik chegiriladi.\n\n"
+        "3️⃣ <b>Kvartira qoidalari:</b>\n"
+        "• Soat 22:30 dan keyin tinchlik soati, shaxsiy idishlarni darhol yuvish va mehmondo'stlik odoblari belgilanadi.\n\n"
+        "4️⃣ <b>Yangi a'zolar:</b>\n"
+        "• <code>⚙️ Kvartira sozlamalari</code> orqali taklif havolasini olib, yangi xonadoshlarni qo'shishingiz mumkin."
     )
     await message.answer(text, parse_mode="HTML")

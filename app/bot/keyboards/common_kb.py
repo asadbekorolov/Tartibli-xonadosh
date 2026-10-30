@@ -7,11 +7,11 @@ def get_main_menu_kb() -> ReplyKeyboardMarkup:
         keyboard=[
             [
                 KeyboardButton(text="📋 Bugungi navbatchilik"),
-                KeyboardButton(text="➕ Xarajat qo'shish"),
+                KeyboardButton(text="🛒 Bozorlik va Kassa"),
             ],
             [
-                KeyboardButton(text="📊 Kvartira balansi"),
                 KeyboardButton(text="👥 Xonadoshlar"),
+                KeyboardButton(text="📜 Kvartira Qoidalari"),
             ],
             [
                 KeyboardButton(text="⚙️ Kvartira sozlamalari"),

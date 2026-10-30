@@ -5,17 +5,33 @@ from aiogram.fsm.context import FSMContext
 from html import escape
 from aiogram.types import CallbackQuery, Message
 import pytz
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.keyboards.chore_kb import get_chore_actions_kb
 from app.bot.keyboards.common_kb import get_cancel_kb, get_main_menu_kb
 from app.bot.states.chore_states import AddChoreSG
 from app.config import get_settings
-from app.models.chore import ChoreStatus
+from app.models.chore import ChoreStatus, RotationType
 from app.models.flat import Flat
+from app.models.user import User
 from app.services.chore_service import ChoreService
 
 router = Router(name="chores_router")
 settings = get_settings()
+
+
+async def get_assignees_display_string(session: AsyncSession, assignment) -> str:
+    """Helper to format single or pair assignees safely."""
+    if assignment.assignee_ids and len(assignment.assignee_ids) > 1:
+        stmt = select(User).where(User.id.in_(assignment.assignee_ids))
+        res = await session.execute(stmt)
+        users = res.scalars().all()
+        user_map = {u.id: u.display_name for u in users}
+        names = [user_map.get(uid, f"ID:{uid}") for uid in assignment.assignee_ids]
+        return " va ".join([escape(n) for n in names])
+    elif assignment.assignee:
+        return escape(assignment.assignee.display_name)
+    return "Belgilanmagan"
 
 
 # ------------------- VIEW TODAY'S CHORES ------------------- #
@@ -41,7 +57,7 @@ async def list_today_chores(
 
     if not assignments:
         await message.answer(
-            f"📅 Bugungi kunda (<i>{today}</i>) kvartirada faol navbatchilik vazifalari topilmadi.\n"
+            f"📅 Bugungi kunda (<i>{today.strftime('%d.%m.%Y')}</i>) kvartirada navbatchilik vazifalari rejalashtirilmagan.\n"
             "Yangi vazifa qo'shish uchun '⚙️ Kvartira sozlamalari' bo'limiga o'ting.",
             parse_mode="HTML"
         )
@@ -61,17 +77,24 @@ async def list_today_chores(
             status_emoji = "⏭ O'tkazib yuborildi"
 
         safe_title = escape(a.chore.title)
-        safe_assignee = escape(a.assignee.display_name)
+        safe_assignee = await get_assignees_display_string(session, a)
         safe_desc = escape(a.chore.description or "Izoh yo'q")
         safe_time = escape(a.chore.execution_time)
 
-        text = (
-            f"📌 <b>Vazifa:</b> {safe_title}\n"
-            f"👤 <b>Mas'ul:</b> {safe_assignee}\n"
-            f"⏰ <b>Belgilangan vaqt:</b> {safe_time}\n"
-            f"📋 <b>Izoh:</b> {safe_desc}\n"
-            f"📊 <b>Holati:</b> {status_emoji}"
-        )
+        lines = [
+            f"📌 <b>Vazifa:</b> {safe_title}",
+            f"👥 <b>Mas'ul:</b> {safe_assignee}",
+            f"⏰ <b>Belgilangan vaqt:</b> {safe_time}",
+            f"📋 <b>Tavsif:</b> {safe_desc}",
+            f"📊 <b>Holati:</b> {status_emoji}",
+        ]
+
+        if a.chore.checklist:
+            lines.append("\n📝 <b>Tozalash rejasi (Checklist):</b>")
+            for item in a.chore.checklist:
+                lines.append(f"• {escape(item)}")
+
+        text = "\n".join(lines)
 
         await message.answer(
             text,
@@ -101,12 +124,12 @@ async def cb_chore_done(
     now_tashkent = datetime.now(tz).strftime('%H:%M')
 
     safe_title = escape(assignment.chore.title)
-    safe_assignee = escape(assignment.assignee.display_name)
+    safe_assignee = await get_assignees_display_string(session, assignment)
     safe_time = escape(assignment.chore.execution_time)
 
     text = (
         f"📌 <b>Vazifa:</b> {safe_title}\n"
-        f"👤 <b>Mas'ul:</b> {safe_assignee}\n"
+        f"👥 <b>Mas'ul:</b> {safe_assignee}\n"
         f"⏰ <b>Vaqti:</b> {safe_time}\n"
         f"📊 <b>Holati:</b> ✅ Bajarildi ({now_tashkent})"
     )
@@ -137,20 +160,20 @@ async def cb_chore_defer(
         return
 
     await callback.answer(
-        "⏳ Vazifa kechiktirildi deb belgilandi. Holati kutilmoqda (PENDING). Iltimos, bugun uni bajarishni unutmang!",
+        "⏳ Vazifa kechiktirildi deb belgilandi. Holati kutilmoqda (PENDING).",
         show_alert=True
     )
 
     safe_title = escape(assignment.chore.title)
-    safe_assignee = escape(assignment.assignee.display_name)
+    safe_assignee = await get_assignees_display_string(session, assignment)
     safe_time = escape(assignment.chore.execution_time)
     safe_desc = escape(assignment.chore.description or "Izoh yo'q")
 
     text = (
         f"📌 <b>Vazifa:</b> {safe_title}\n"
-        f"👤 <b>Mas'ul:</b> {safe_assignee}\n"
+        f"👥 <b>Mas'ul:</b> {safe_assignee}\n"
         f"⏰ <b>Belgilangan vaqt:</b> {safe_time}\n"
-        f"📋 <b>Izoh:</b> {safe_desc}\n"
+        f"📋 <b>Tavsif:</b> {safe_desc}\n"
         f"📊 <b>Holati:</b> ⏳ Kechiktirildi ({defer_time} da kechiktirildi, hali kutilmoqda)"
     )
     await callback.message.edit_text(
@@ -176,11 +199,11 @@ async def cb_chore_skip(
     await callback.answer("Vazifa o'tkazib yuborildi deb belgilandi.", show_alert=True)
 
     safe_title = escape(assignment.chore.title)
-    safe_assignee = escape(assignment.assignee.display_name)
+    safe_assignee = await get_assignees_display_string(session, assignment)
 
     text = (
         f"📌 <b>Vazifa:</b> {safe_title}\n"
-        f"👤 <b>Mas'ul:</b> {safe_assignee}\n"
+        f"👥 <b>Mas'ul:</b> {safe_assignee}\n"
         f"📊 <b>Holati:</b> ⏭ O'tkazib yuborildi"
     )
     await callback.message.edit_text(text, parse_mode="HTML")
@@ -194,7 +217,7 @@ async def cb_add_chore_start(callback: CallbackQuery, state: FSMContext) -> None
     await callback.answer()
     await state.set_state(AddChoreSG.waiting_for_title)
     await callback.message.answer(
-        "📝 Yangi navbatchilik vazifasi nomini kiriting:\n(Masalan: <i>Vanna va dahliz tozaligi</i>)",
+        "📝 Yangi navbatchilik vazifasi nomini kiriting:\n(Masalan: <i>10L suv navbati</i> yoki <i>Vanna tozaligi</i>)",
         reply_markup=get_cancel_kb(),
         parse_mode="HTML"
     )

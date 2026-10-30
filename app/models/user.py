@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from app.models.flat import FlatMember
     from app.models.chore import ChoreAssignment
     from app.models.expense import Expense, ExpenseParticipant, Settlement
+    from app.models.fund import FundTransaction
 
 
 class User(Base, TimestampMixin):
@@ -30,6 +31,11 @@ class User(Base, TimestampMixin):
     chore_assignments: Mapped[List["ChoreAssignment"]] = relationship(
         "ChoreAssignment", back_populates="assignee"
     )
+    fund_transactions: Mapped[List["FundTransaction"]] = relationship(
+        "FundTransaction", back_populates="user"
+    )
+
+    # Deprecated pairwise ledger relationships (kept for backwards compatibility)
     paid_expenses: Mapped[List["Expense"]] = relationship(
         "Expense", back_populates="payer"
     )

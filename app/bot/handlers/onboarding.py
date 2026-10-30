@@ -5,13 +5,14 @@ from html import escape
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.keyboards.common_kb import get_cancel_kb, get_main_menu_kb
-from app.bot.keyboards.flat_kb import get_flat_settings_kb
+from app.bot.keyboards.flat_kb import get_flat_settings_kb, get_template_picker_kb
 from app.bot.states.flat_states import CreateFlatSG, JoinFlatSG
 from app.config import get_settings
-from app.models.flat import Flat, FlatRole
+from app.models.flat import Flat, FlatRole, FlatTemplateType
 from app.models.user import User
 from app.repositories.flat_repo import FlatRepository
 from app.services.onboarding_service import OnboardingService
+from app.services.templates import TemplateService
 
 router = Router(name="onboarding_router")
 settings = get_settings()
@@ -36,40 +37,70 @@ async def cb_create_flat(callback: CallbackQuery, state: FSMContext) -> None:
 async def process_flat_name(
     message: Message,
     state: FSMContext,
-    session: AsyncSession,
-    current_user: Optional[User] = None
 ) -> None:
     name = message.text.strip()
     if len(name) < 3:
         await message.answer("⚠️ Nom juda qisqa. Kamida 3 ta belgi kiriting:", parse_mode="HTML")
         return
 
-    await state.clear()
-    user_id = current_user.id if current_user else (message.from_user.id if message.from_user else 0)
+    await state.update_data(flat_name=name)
+    await state.set_state(CreateFlatSG.waiting_for_template)
+    safe_name = escape(name)
 
-    # Create flat and seed initial default student chores
+    await message.answer(
+        f"🏢 <b>'{safe_name}' kvartirasi uchun shablon turini tanlang:</b>\n\n"
+        "Shablonga qarab navbatchilik grafigi (oshxona, 10L suv, haftalik juftlik tozalash, tinchlik soati) avtomatik sozlanadi:",
+        reply_markup=get_template_picker_kb(),
+        parse_mode="HTML"
+    )
+
+
+@router.callback_query(CreateFlatSG.waiting_for_template, F.data.startswith("flat_tpl:"))
+async def process_flat_template(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: AsyncSession,
+    current_user: Optional[User] = None,
+) -> None:
+    template_val = callback.data.split(":")[1]
+    template_type = FlatTemplateType(template_val)
+    data = await state.get_data()
+    flat_name = data.get("flat_name", "Yangi Kvartira")
+    await state.clear()
+    await callback.answer()
+
+    user_id = current_user.id if current_user else (callback.from_user.id if callback.from_user else 0)
+
     try:
         flat = await OnboardingService.create_flat_for_user(
             session=session,
             creator_id=user_id,
-            flat_name=name,
+            flat_name=flat_name,
+            template_type=template_type,
             address=None,
         )
     except ValueError as e:
-        await message.answer(f"⚠️ {escape(str(e))}", reply_markup=get_main_menu_kb(), parse_mode="HTML")
+        await callback.message.answer(
+            f"⚠️ {escape(str(e))}",
+            reply_markup=get_main_menu_kb(),
+            parse_mode="HTML"
+        )
         return
 
     invite_link = f"https://t.me/{settings.BOT_NAME}?start=join_{flat.invite_code}"
     safe_name = escape(flat.name)
     safe_code = escape(flat.invite_code)
+    tpl_name = escape(TemplateService.get_template_display_name(template_type))
 
-    await message.answer(
+    await callback.message.answer(
         f"🎉 <b>Kvartira muvaffaqiyatli yaratildi!</b>\n\n"
         f"🏠 <b>Nomi:</b> {safe_name}\n"
-        f"🔑 <b>Taklif kodi:</b> <code>{safe_code}</code>\n\n"
-        f"👥 Xonadoshlaringizni qo'shish uchun ushbu havolani yuboring:\n"
+        f"📋 <b>Shablon:</b> {tpl_name}\n"
+        f"🔑 <b>Taklif kodi:</b> <code>{safe_code}</code>\n"
+        f"💰 <b>Boshlang'ich kassa balansi:</b> 0 so'm\n\n"
+        f"👥 Xonadoshlaringizni qo'shish uchun ushbu taklif havolasini yuboring:\n"
         f"{invite_link}\n\n"
-        "Standart navbatchilik vazifalari (oshxona, musor, suv) avtomatik faollashtirildi!",
+        "Shablon bo'yicha standart navbatchilik vazifalari muvaffaqiyatli faollashtirildi!",
         reply_markup=get_main_menu_kb(),
         parse_mode="HTML"
     )
@@ -113,7 +144,7 @@ async def process_join_code(
         await message.answer(
             f"{safe_reply}\n\n"
             f"🏠 <b>Kvartira:</b> {safe_name}\n\n"
-            "Endi siz ham umumiy navbatchilik va xarajatlar ro'yxatidasiz!",
+            "Endi siz ham umumiy navbatchilik va bozorlik-kassa tizimidan foydalanishingiz mumkin!",
             reply_markup=get_main_menu_kb(),
             parse_mode="HTML"
         )
@@ -150,6 +181,7 @@ async def show_members(
         text_lines.append(f"{idx}. {safe_user} — {role_badge}")
 
     text_lines.append(f"\n🔑 Taklif kodi: <code>{escape(current_flat.invite_code)}</code>")
+    text_lines.append(f"💰 Kassa zaxirasi: <b>{int(current_flat.fund_balance):,} so'm</b>")
     await message.answer("\n".join(text_lines), parse_mode="HTML")
 
 
@@ -166,10 +198,14 @@ async def show_settings(
     members = await FlatRepository.get_members(session, current_flat.id)
     safe_name = escape(current_flat.name)
     safe_code = escape(current_flat.invite_code)
+    tpl_name = escape(TemplateService.get_template_display_name(current_flat.template_type))
     address_line = f"📍 <b>Manzili:</b> {escape(current_flat.address)}\n" if current_flat.address else ""
     text = (
         f"⚙️ <b>Kvartira sozlamalari va ma'lumotlari:</b>\n\n"
         f"🏠 <b>Nomi:</b> {safe_name}\n"
+        f"📋 <b>Shablon:</b> {tpl_name}\n"
+        f"🌙 <b>Tinchlik vaqti:</b> soat {escape(current_flat.quiet_hours_start)} dan boshlab\n"
+        f"💰 <b>Kassa balansi:</b> {int(current_flat.fund_balance):,} so'm\n"
         f"{address_line}"
         f"👥 <b>A'zolar soni:</b> {len(members)} ta\n"
         f"🔑 <b>Taklif kodi:</b> <code>{safe_code}</code>\n\n"

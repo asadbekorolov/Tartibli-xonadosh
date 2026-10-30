@@ -12,6 +12,7 @@ from app.config import get_settings
 from app.database.session import async_session_maker
 from app.models.chore import ChoreAssignment, ChoreStatus
 from app.models.flat import Flat, FlatMember
+from app.models.user import User
 from app.services.chore_service import ChoreService
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ def get_current_tashkent_date():
 async def run_daily_rotation_job(bot: Bot) -> None:
     """
     Midnight Job (00:01 Asia/Tashkent):
-    Calculates cyclic round-robin assignments for all active flats for the new day.
+    Calculates cyclic round-robin and pair assignments for all active flats for the new day.
     """
     logger.info("Starting midnight chore rotation across all flats...")
     today = get_current_tashkent_date()
@@ -82,11 +83,23 @@ async def run_morning_notification_job(bot: Bot) -> None:
                 ]
                 for idx, a in enumerate(assignments, start=1):
                     safe_title = escape(a.chore.title)
-                    safe_assignee = escape(a.assignee.display_name)
+                    if a.assignee_ids and len(a.assignee_ids) > 1:
+                        # Pair or multi-assignees
+                        names = []
+                        for uid in a.assignee_ids:
+                            member = next((m for m in flat.members if m.user_id == uid), None)
+                            names.append(member.user.display_name if member else f"ID:{uid}")
+                        safe_assignee = " va ".join([escape(n) for n in names])
+                    elif a.assignee:
+                        safe_assignee = escape(a.assignee.display_name)
+                    else:
+                        safe_assignee = "Belgilanmagan"
+
                     safe_time = escape(a.chore.execution_time)
                     lines.append(
                         f"{idx}. 📌 <b>{safe_title}</b> — {safe_assignee} (⏰ {safe_time})"
                     )
+
                 lines.append("\nKuningiz barakali va unumli o'tsin! ✨")
                 summary_text = "\n".join(lines)
 
@@ -129,27 +142,29 @@ async def run_evening_reminder_job(bot: Bot) -> None:
         pending_assignments = result.scalars().all()
 
         for a in pending_assignments:
-            try:
-                safe_name = escape(a.assignee.first_name)
-                safe_title = escape(a.chore.title)
-                safe_time = escape(a.chore.execution_time)
-                safe_desc = escape(a.chore.description or "Izoh yo'q")
-                text = (
-                    "🌙 <b>Kechki eslatma!</b>\n\n"
-                    f"Salom, <b>{safe_name}</b>! Bugungi navbatchilik vazifangiz hali yakunlanmagan:\n\n"
-                    f"📌 <b>Vazifa:</b> {safe_title}\n"
-                    f"⏰ <b>Belgilangan vaqt:</b> {safe_time}\n"
-                    f"📋 <b>Izoh:</b> {safe_desc}\n\n"
-                    "Iltimos, vazifani bajargach, quyidagi tugma orqali tasdiqlang:"
-                )
-                await bot.send_message(
-                    chat_id=a.assignee_id,
-                    text=text,
-                    reply_markup=get_chore_actions_kb(a.id, a.status),
-                    parse_mode="HTML"
-                )
-            except Exception as e:
-                logger.warning(f"Could not send evening reminder to user {a.assignee_id}: {e}")
+            recipients = a.assignee_ids if (a.assignee_ids and len(a.assignee_ids) > 0) else ([a.assignee_id] if a.assignee_id else [])
+            safe_title = escape(a.chore.title)
+            safe_time = escape(a.chore.execution_time)
+            safe_desc = escape(a.chore.description or "Izoh yo'q")
+
+            for user_id in recipients:
+                try:
+                    text = (
+                        "🌙 <b>Kechki eslatma!</b>\n\n"
+                        f"Bugungi navbatchilik vazifangiz hali yakunlanmagan:\n\n"
+                        f"📌 <b>Vazifa:</b> {safe_title}\n"
+                        f"⏰ <b>Belgilangan vaqt:</b> {safe_time}\n"
+                        f"📋 <b>Tavsif:</b> {safe_desc}\n\n"
+                        "Iltimos, vazifani bajargach, quyidagi tugma orqali tasdiqlang:"
+                    )
+                    await bot.send_message(
+                        chat_id=user_id,
+                        text=text,
+                        reply_markup=get_chore_actions_kb(a.id, a.status),
+                        parse_mode="HTML"
+                    )
+                except Exception as e:
+                    logger.warning(f"Could not send evening reminder to user {user_id}: {e}")
 
 
 def setup_scheduler(bot: Bot) -> AsyncIOScheduler:

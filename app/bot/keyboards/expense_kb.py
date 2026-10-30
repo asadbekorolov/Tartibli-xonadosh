@@ -1,58 +1,52 @@
 from decimal import Decimal
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from app.models.expense import ExpenseCategory
 
 
-def get_expense_categories_kb() -> InlineKeyboardMarkup:
-    """Category picker for shared expenses."""
+def get_fund_menu_kb() -> InlineKeyboardMarkup:
+    """Primary communal fund and market dashboard inline actions."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🛒 Oziq-ovqat / Bozorlik",
-                    callback_data=f"exp_cat:{ExpenseCategory.GROCERY.value}"
+                    text="💰 Kassa balansi",
+                    callback_data="fund:balance"
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text="💡 Kommunal / Wi-Fi",
-                    callback_data=f"exp_cat:{ExpenseCategory.UTILITIES.value}"
+                    text="📥 Pul yig'ish",
+                    callback_data="fund:collect"
+                ),
+                InlineKeyboardButton(
+                    text="🧾 Xarid kiritish",
+                    callback_data="fund:expense"
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text="🧼 Tozalash vositalari",
-                    callback_data=f"exp_cat:{ExpenseCategory.CLEANING.value}"
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="💧 19L Suv",
-                    callback_data=f"exp_cat:{ExpenseCategory.WATER.value}"
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="📦 Boshqa",
-                    callback_data=f"exp_cat:{ExpenseCategory.OTHER.value}"
+                    text="📜 Xaridlar tarixi",
+                    callback_data="fund:history"
                 ),
             ],
         ]
     )
 
 
-def get_settlement_confirm_kb(
-    debtor_id: int, creditor_id: int, amount: Decimal
-) -> InlineKeyboardMarkup:
-    """Confirmation button for debt settlement."""
+def get_fund_collect_confirm_kb(per_person_amount: Decimal) -> InlineKeyboardMarkup:
+    """Confirmation button for communal fund collection."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=f"🤝 Qarzni to'ladim/yopdim ({int(amount):,} so'm)",
-                    callback_data=f"settle_confirm:{debtor_id}:{creditor_id}:{int(amount)}"
+                    text="✅ Barcha a'zolardan yig'ishni tasdiqlash",
+                    callback_data=f"fund_coll_ok:{int(per_person_amount)}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="❌ Bekor qilish",
+                    callback_data="fund:cancel"
                 )
             ]
         ]
     )
-

@@ -4,10 +4,9 @@ import string
 from typing import Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
-from app.models.flat import Flat, FlatMember, FlatRole
-from app.models.chore import RotationType
+from app.models.flat import Flat, FlatMember, FlatRole, FlatTemplateType
 from app.repositories.flat_repo import FlatRepository
-from app.repositories.chore_repo import ChoreRepository
+from app.services.templates import TemplateService
 
 settings = get_settings()
 
@@ -47,11 +46,12 @@ class OnboardingService:
         session: AsyncSession,
         creator_id: int,
         flat_name: str,
+        template_type: FlatTemplateType = FlatTemplateType.LARGE_FLAT,
         address: Optional[str] = None,
     ) -> Flat:
         """
-        Creates a new flat, binds the creator as ADMIN, and bootstraps default chores.
-        Validates that user does not already belong to an active flat.
+        Creates a new flat, binds the creator as ADMIN, and bootstraps default chores
+        based on the selected multi-tenant apartment preset.
         """
         existing_flat = await FlatRepository.get_user_active_flat(session, creator_id)
         if existing_flat:
@@ -65,25 +65,15 @@ class OnboardingService:
             invite_code=invite_code,
             address=address,
             max_members=settings.MAX_MEMBERS_PER_FLAT,
+            template_type=template_type,
         )
 
-        # Bootstrap initial standard student chores (navbatchilik shablonlari)
-        default_chores = [
-            ("Oshxona va zal tozaligi", "Oshxona stoli, polni artish va idishlarni tartibga keltirish", "21:00"),
-            ("Chiqindini olib chiqish", "Oshxona va dahlizdagi musor chelaklarini bo'shatish", "08:30"),
-            ("Ichimlik suvi (19L) nazorati", "Suv tugashidan oldin yangi 19L baklajkaga buyurtma berish", "14:00"),
-        ]
-
-        for title, desc, time_str in default_chores:
-            await ChoreRepository.create_chore(
-                session=session,
-                flat_id=flat.id,
-                title=title,
-                description=desc,
-                rotation_type=RotationType.ROUND_ROBIN,
-                frequency_days=1,
-                execution_time=time_str,
-            )
+        # Bootstrap preset chore duties
+        await TemplateService.apply_template_to_flat(
+            session=session,
+            flat_id=flat.id,
+            template_type=template_type,
+        )
 
         return flat
 
@@ -128,4 +118,3 @@ class OnboardingService:
         # 3. Add as regular member
         await FlatRepository.add_member(session, flat.id, user_id, role=FlatRole.MEMBER)
         return True, f"🎉 Tabriklaymiz! Siz '{flat.name}' kvartirasiga muvaffaqiyatli qo'shildingiz.", flat
-

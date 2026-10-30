@@ -4,6 +4,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
 from redis.asyncio import Redis
 from app.bot.handlers import (
+    admin_router,
     chores_router,
     common_router,
     expenses_router,
@@ -38,6 +39,7 @@ def create_dispatcher() -> Dispatcher:
 
     # 3. Include handler routers
     dp.include_router(common_router)
+    dp.include_router(admin_router)
     dp.include_router(onboarding_router)
     dp.include_router(chores_router)
     dp.include_router(expenses_router)

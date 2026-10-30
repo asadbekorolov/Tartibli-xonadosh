@@ -2,7 +2,7 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from app.models.flat import Flat, FlatMember, FlatRole
+from app.models.flat import Flat, FlatMember, FlatRole, FlatTemplateType
 
 
 class FlatRepository:
@@ -14,6 +14,7 @@ class FlatRepository:
         invite_code: str,
         address: Optional[str] = None,
         max_members: int = 10,
+        template_type: FlatTemplateType = FlatTemplateType.LARGE_FLAT,
     ) -> Flat:
         flat = Flat(
             name=name,
@@ -21,6 +22,7 @@ class FlatRepository:
             invite_code=invite_code,
             address=address,
             max_members=max_members,
+            template_type=template_type,
             is_active=True
         )
         session.add(flat)
@@ -116,3 +118,15 @@ class FlatRepository:
         )
         result = await session.execute(stmt)
         return list(result.scalars().all())
+
+    @staticmethod
+    async def update_quiet_hours(
+        session: AsyncSession, flat_id: int, quiet_hours_start: str
+    ) -> Optional[Flat]:
+        stmt = select(Flat).where(Flat.id == flat_id)
+        result = await session.execute(stmt)
+        flat = result.scalar_one_or_none()
+        if flat:
+            flat.quiet_hours_start = quiet_hours_start
+            await session.flush()
+        return flat

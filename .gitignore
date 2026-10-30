@@ -28,5 +28,7 @@ postgres_data/
 logs/
 *.log
 
-# Docker
-.docker/
+# Tests & Cache
+.pytest_cache/
+.coverage
+htmlcov/
