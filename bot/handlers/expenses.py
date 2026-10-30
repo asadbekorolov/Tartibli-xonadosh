@@ -4,7 +4,7 @@ from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.html import quote
+from html import escape
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from bot.database.crud import (
@@ -102,8 +102,8 @@ async def process_expense_title(message: Message, state: FSMContext, session: As
 
     per_person = int(amount // member_count) if member_count else int(amount)
 
-    safe_title = quote(expense.title)
-    safe_payer = quote(user.full_name)
+    safe_title = escape(expense.title)
+    safe_payer = escape(user.full_name)
 
     text = (
         f"🧾 <b>Xarajat muvaffaqiyatli qayd etildi!</b>\n\n"
@@ -149,7 +149,7 @@ async def cmd_balance(event: Message | CallbackQuery, session: AsyncSession) -> 
         else:
             status_text = "⚪️ 0 so'm (Hisobi teng)"
 
-        safe_name = quote(b.user_name)
+        safe_name = escape(b.user_name)
         report_lines.append(f"• <b>{safe_name}:</b> {status_text} | Sarfladi: {int(b.total_paid):,} so'm")
 
     report_lines.append("\n" + "—" * 25 + "\n")
@@ -166,8 +166,8 @@ async def cmd_balance(event: Message | CallbackQuery, session: AsyncSession) -> 
 
     report_lines.append("💳 <b>Qarzlarni yopish bo'yicha tavsiyalar (Min-Cash-Flow):</b>\n")
     for t in transfers:
-        safe_debtor = quote(t.debtor_name)
-        safe_creditor = quote(t.creditor_name)
+        safe_debtor = escape(t.debtor_name)
+        safe_creditor = escape(t.creditor_name)
         report_lines.append(f"👉 <b>{safe_debtor}</b> ➔ <b>{safe_creditor}</b>ga: <code>{int(t.amount):,} so'm</code>")
 
     summary_text = "\n".join(report_lines)
@@ -179,8 +179,8 @@ async def cmd_balance(event: Message | CallbackQuery, session: AsyncSession) -> 
 
     # Send one-tap settlement confirmation buttons
     for t in transfers:
-        safe_debtor = quote(t.debtor_name)
-        safe_creditor = quote(t.creditor_name)
+        safe_debtor = escape(t.debtor_name)
+        safe_creditor = escape(t.creditor_name)
         await msg_target.answer(
             f"To'lovni tasdiqlash: <b>{safe_debtor}</b> ➔ <b>{safe_creditor}</b> ({int(t.amount):,} so'm):",
             reply_markup=get_settlement_kb(t.debtor_id, t.creditor_id, t.amount),

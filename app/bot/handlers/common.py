@@ -2,7 +2,7 @@ from typing import Optional
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.html import quote
+from html import escape
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.keyboards.common_kb import get_main_menu_kb
@@ -37,8 +37,8 @@ async def cmd_start(
             invite_code=invite_code,
         )
         if success and flat:
-            safe_name = quote(flat.name)
-            safe_reply = quote(reply_text)
+            safe_name = escape(flat.name)
+            safe_reply = escape(reply_text)
             await message.answer(
                 f"🏠 <b>{safe_name}</b> kvartirasiga xush kelibsiz!\n\n"
                 f"{safe_reply}\n\n"
@@ -48,12 +48,12 @@ async def cmd_start(
             )
             return
         else:
-            await message.answer(quote(reply_text), parse_mode="HTML")
+            await message.answer(escape(reply_text), parse_mode="HTML")
 
     # Regular start flow
     if current_flat:
-        safe_user = quote(current_user.first_name)
-        safe_flat = quote(current_flat.name)
+        safe_user = escape(current_user.first_name)
+        safe_flat = escape(current_flat.name)
         await message.answer(
             f"Assalomu alaykum, <b>{safe_user}</b>!\n\n"
             f"🏠 Siz hozirda <b>{safe_flat}</b> kvartirasi boshqaruvidasiz.\n"
@@ -62,7 +62,7 @@ async def cmd_start(
             parse_mode="HTML"
         )
     else:
-        safe_user = quote(current_user.first_name)
+        safe_user = escape(current_user.first_name)
         await message.answer(
             f"Assalomu alaykum, <b>{safe_user}</b>!\n\n"
             "🌟 <b>'Talabalar Kvartira Boshqaruvi'</b> tizimiga xush kelibsiz!\n\n"
@@ -88,12 +88,14 @@ async def cmd_cancel(
     if current_flat:
         await message.answer(
             "Amal bekor qilindi. Bosh menyudasiz.",
-            reply_markup=get_main_menu_kb()
+            reply_markup=get_main_menu_kb(),
+            parse_mode="HTML"
         )
     else:
         await message.answer(
             "Amal bekor qilindi.",
-            reply_markup=get_welcome_kb()
+            reply_markup=get_welcome_kb(),
+            parse_mode="HTML"
         )
 
 

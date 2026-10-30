@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from aiogram import Bot
-from aiogram.html import quote
+from html import escape
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
@@ -81,9 +81,9 @@ async def run_morning_notification_job(bot: Bot) -> None:
                     f"🌅 <b>Xayrli tong! Bugungi navbatchilik ro'yxati ({today.strftime('%d.%m.%Y')}):</b>\n"
                 ]
                 for idx, a in enumerate(assignments, start=1):
-                    safe_title = quote(a.chore.title)
-                    safe_assignee = quote(a.assignee.display_name)
-                    safe_time = quote(a.chore.execution_time)
+                    safe_title = escape(a.chore.title)
+                    safe_assignee = escape(a.assignee.display_name)
+                    safe_time = escape(a.chore.execution_time)
                     lines.append(
                         f"{idx}. 📌 <b>{safe_title}</b> — {safe_assignee} (⏰ {safe_time})"
                     )
@@ -130,10 +130,10 @@ async def run_evening_reminder_job(bot: Bot) -> None:
 
         for a in pending_assignments:
             try:
-                safe_name = quote(a.assignee.first_name)
-                safe_title = quote(a.chore.title)
-                safe_time = quote(a.chore.execution_time)
-                safe_desc = quote(a.chore.description or "Izoh yo'q")
+                safe_name = escape(a.assignee.first_name)
+                safe_title = escape(a.chore.title)
+                safe_time = escape(a.chore.execution_time)
+                safe_desc = escape(a.chore.description or "Izoh yo'q")
                 text = (
                     "🌙 <b>Kechki eslatma!</b>\n\n"
                     f"Salom, <b>{safe_name}</b>! Bugungi navbatchilik vazifangiz hali yakunlanmagan:\n\n"

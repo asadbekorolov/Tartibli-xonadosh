@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.html import quote
+from html import escape
 from aiogram.types import CallbackQuery, Message
 import pytz
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +20,7 @@ settings = get_settings()
 
 # ------------------- VIEW TODAY'S CHORES ------------------- #
 
-@router.message(F.text == "🧹 Bugungi navbatchilik")
+@router.message(F.text.in_(["📋 Bugungi navbatchilik", "🧹 Bugungi navbatchilik"]))
 async def list_today_chores(
     message: Message,
     session: AsyncSession,
@@ -28,7 +28,7 @@ async def list_today_chores(
 ) -> None:
     """Lists assignments for the current day."""
     if not current_flat:
-        await message.answer("Siz hali kvartiraga qo'shilmagansiz. /start bosing.")
+        await message.answer("Siz hali kvartiraga qo'shilmagansiz. /start bosing.", parse_mode="HTML")
         return
 
     tz = pytz.timezone(settings.TIMEZONE)
@@ -60,10 +60,10 @@ async def list_today_chores(
         elif a.status == ChoreStatus.SKIPPED:
             status_emoji = "⏭ O'tkazib yuborildi"
 
-        safe_title = quote(a.chore.title)
-        safe_assignee = quote(a.assignee.display_name)
-        safe_desc = quote(a.chore.description or "Izoh yo'q")
-        safe_time = quote(a.chore.execution_time)
+        safe_title = escape(a.chore.title)
+        safe_assignee = escape(a.assignee.display_name)
+        safe_desc = escape(a.chore.description or "Izoh yo'q")
+        safe_time = escape(a.chore.execution_time)
 
         text = (
             f"📌 <b>Vazifa:</b> {safe_title}\n"
@@ -100,9 +100,9 @@ async def cb_chore_done(
     tz = pytz.timezone(settings.TIMEZONE)
     now_tashkent = datetime.now(tz).strftime('%H:%M')
 
-    safe_title = quote(assignment.chore.title)
-    safe_assignee = quote(assignment.assignee.display_name)
-    safe_time = quote(assignment.chore.execution_time)
+    safe_title = escape(assignment.chore.title)
+    safe_assignee = escape(assignment.assignee.display_name)
+    safe_time = escape(assignment.chore.execution_time)
 
     text = (
         f"📌 <b>Vazifa:</b> {safe_title}\n"
@@ -122,14 +122,41 @@ async def cb_chore_defer(
     callback: CallbackQuery,
     session: AsyncSession,
 ) -> None:
-    """Handles chore deferral by assignee."""
+    """Handles chore deferral by assignee without marking task as completed."""
     assignment_id = int(callback.data.split(":")[1])
-    assignment = await ChoreService.complete_chore(
-        session, assignment_id, notes="Kechiktirildi (Vazifa keyinroqqa qoldirildi)"
+    tz = pytz.timezone(settings.TIMEZONE)
+    defer_time = datetime.now(tz).strftime('%H:%M')
+    assignment = await ChoreService.defer_chore(
+        session=session,
+        assignment_id=assignment_id,
+        notes=f"Kechiktirildi ({defer_time})"
     )
+
+    if not assignment:
+        await callback.answer("Vazifa topilmadi.", show_alert=True)
+        return
+
     await callback.answer(
-        "⏳ Vazifa kechiktirildi deb belgilandi. Iltimos, bugun uni bajarishni unutmang!",
+        "⏳ Vazifa kechiktirildi deb belgilandi. Holati kutilmoqda (PENDING). Iltimos, bugun uni bajarishni unutmang!",
         show_alert=True
+    )
+
+    safe_title = escape(assignment.chore.title)
+    safe_assignee = escape(assignment.assignee.display_name)
+    safe_time = escape(assignment.chore.execution_time)
+    safe_desc = escape(assignment.chore.description or "Izoh yo'q")
+
+    text = (
+        f"📌 <b>Vazifa:</b> {safe_title}\n"
+        f"👤 <b>Mas'ul:</b> {safe_assignee}\n"
+        f"⏰ <b>Belgilangan vaqt:</b> {safe_time}\n"
+        f"📋 <b>Izoh:</b> {safe_desc}\n"
+        f"📊 <b>Holati:</b> ⏳ Kechiktirildi ({defer_time} da kechiktirildi, hali kutilmoqda)"
+    )
+    await callback.message.edit_text(
+        text,
+        reply_markup=get_chore_actions_kb(assignment.id, ChoreStatus.PENDING),
+        parse_mode="HTML"
     )
 
 
@@ -148,8 +175,8 @@ async def cb_chore_skip(
 
     await callback.answer("Vazifa o'tkazib yuborildi deb belgilandi.", show_alert=True)
 
-    safe_title = quote(assignment.chore.title)
-    safe_assignee = quote(assignment.assignee.display_name)
+    safe_title = escape(assignment.chore.title)
+    safe_assignee = escape(assignment.assignee.display_name)
 
     text = (
         f"📌 <b>Vazifa:</b> {safe_title}\n"
@@ -179,8 +206,9 @@ async def process_chore_title(message: Message, state: FSMContext) -> None:
     await state.update_data(title=title)
     await state.set_state(AddChoreSG.waiting_for_description)
     await message.answer(
-        "📋 Vazifa bo'yicha qisqacha tavsif yoki talablarni kiriting:\n(O'tkazib yuborish uchun `-` yozing)",
-        reply_markup=get_cancel_kb()
+        "📋 Vazifa bo'yicha qisqacha tavsif yoki talablarni kiriting:\n(O'tkazib yuborish uchun <code>-</code> yozing)",
+        reply_markup=get_cancel_kb(),
+        parse_mode="HTML"
     )
 
 
@@ -209,7 +237,7 @@ async def process_chore_time(
     await state.clear()
 
     if not current_flat:
-        await message.answer("Xatolik: kvartira topilmadi.", reply_markup=get_main_menu_kb())
+        await message.answer("Xatolik: kvartira topilmadi.", reply_markup=get_main_menu_kb(), parse_mode="HTML")
         return
 
     chore = await ChoreService.add_custom_chore(
@@ -220,8 +248,8 @@ async def process_chore_time(
         execution_time=time_str,
     )
 
-    safe_title = quote(chore.title)
-    safe_time = quote(chore.execution_time)
+    safe_title = escape(chore.title)
+    safe_time = escape(chore.execution_time)
 
     await message.answer(
         f"✅ <b>Yangi navbatchilik vazifasi yaratildi!</b>\n\n"

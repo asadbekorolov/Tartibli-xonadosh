@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     )
 
     # Telegram Bot Live Credentials
-    BOT_TOKEN: str = "9246474249:AAHRGaZ65FlU3vUpyqv3vT9qlBcLjX-Hej4"
+    BOT_TOKEN: str = "9246474249:AAGP64a0B5-8iWAk3K70eUaS8NECHN_KJs8"
     BOT_NAME: str = "TartibliXonadoshBot"
 
     # Database Configuration (PostgreSQL with asyncpg)

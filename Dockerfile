@@ -44,4 +44,4 @@ COPY --from=builder /install /usr/local
 COPY . /app/
 
 # Launch bot
-CMD ["python", "-m", "bot.main"]
+CMD ["python", "main.py"]

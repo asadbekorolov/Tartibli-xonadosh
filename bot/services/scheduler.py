@@ -1,6 +1,6 @@
 import logging
 from aiogram import Bot
-from aiogram.html import quote
+from html import escape
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
@@ -34,9 +34,9 @@ async def send_morning_chore_reminders(bot: Bot) -> None:
                 continue
 
             try:
-                safe_flat = quote(chore.flat.name)
-                safe_title = quote(chore.title)
-                safe_assignee = quote(chore.current_assignee.full_name)
+                safe_flat = escape(chore.flat.name)
+                safe_title = escape(chore.title)
+                safe_assignee = escape(chore.current_assignee.full_name)
 
                 text = (
                     "🌅 <b>Xayrli tong! Bugungi navbatchilik eslatmasi:</b>\n\n"

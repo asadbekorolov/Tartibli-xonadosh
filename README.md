@@ -114,7 +114,7 @@ $$\text{Net}(u) = \sum \text{To'lagan summasi} - \sum \text{Uning ulushiga to'g'
 
 2. **`.env` faylida Bot parametrlari to'ldirilgan:**
    ```env
-   BOT_TOKEN=9246474249:AAHRGaZ65FlU3vUpyqv3vT9qlBcLjX-Hej4
+   BOT_TOKEN=9246474249:AAGP64a0B5-8iWAk3K70eUaS8NECHN_KJs8
    BOT_NAME=TartibliXonadoshBot
    DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/tartibli_db
    TIMEZONE=Asia/Tashkent

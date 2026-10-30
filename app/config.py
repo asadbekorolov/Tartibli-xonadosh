@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     )
 
     # Telegram Bot
-    BOT_TOKEN: str = "9246474249:AAHRGaZ65FlU3vUpyqv3vT9qlBcLjX-Hej4"
+    BOT_TOKEN: str
     BOT_NAME: str = "TartibliXonadoshBot"
 
     # PostgreSQL Database

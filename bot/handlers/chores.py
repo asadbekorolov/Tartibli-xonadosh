@@ -1,6 +1,6 @@
 from aiogram import F, Router
 from aiogram.filters import Command
-from aiogram.html import quote
+from html import escape
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from bot.database.crud import (
@@ -52,8 +52,8 @@ async def cmd_list_chores(event: Message | CallbackQuery, session: AsyncSession)
         assignee_name = chore.current_assignee.full_name if chore.current_assignee else "Tayinlanmagan"
         status_text = "⏳ Kutilmoqda (Bajarilmagan)" if chore.status == "PENDING" else "✅ Bajarilgan"
 
-        safe_title = quote(chore.title)
-        safe_assignee = quote(assignee_name)
+        safe_title = escape(chore.title)
+        safe_assignee = escape(assignee_name)
 
         text = (
             f"📌 <b>{safe_title}</b>\n"
@@ -89,8 +89,8 @@ async def cmd_add_chore(message: Message, session: AsyncSession) -> None:
     chore = await create_chore(session, user.flat_id, title)
     assignee_name = chore.current_assignee.full_name if chore.current_assignee else "Xonadoshlar"
 
-    safe_title = quote(chore.title)
-    safe_assignee = quote(assignee_name)
+    safe_title = escape(chore.title)
+    safe_assignee = escape(assignee_name)
 
     await message.answer(
         f"✅ <b>Yangi navbatchilik vazifasi qo'shildi!</b>\n\n"
@@ -121,10 +121,10 @@ async def cb_chore_complete(callback: CallbackQuery, session: AsyncSession) -> N
 
     await callback.answer("🎉 Barakalla! Vazifa bajarildi!", show_alert=True)
 
-    safe_title = quote(chore.title)
-    safe_prev_name = quote(prev_name)
-    safe_next_name = quote(next_name)
-    safe_next_mention = quote(next_mention)
+    safe_title = escape(chore.title)
+    safe_prev_name = escape(prev_name)
+    safe_next_name = escape(next_name)
+    safe_next_mention = escape(next_mention)
 
     text = (
         f"🌟 <b>Vazifa muvaffaqiyatli bajarildi!</b>\n\n"
@@ -152,8 +152,8 @@ async def cb_chore_skip(callback: CallbackQuery, session: AsyncSession) -> None:
 
     await callback.answer(f"Navbat {next_name}ga o'tkazildi.", show_alert=True)
 
-    safe_title = quote(chore.title)
-    safe_next_name = quote(next_name)
+    safe_title = escape(chore.title)
+    safe_next_name = escape(next_name)
 
     text = (
         f"⏭ <b>Navbat o'tkazib yuborildi.</b>\n\n"

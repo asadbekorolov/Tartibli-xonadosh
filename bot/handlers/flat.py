@@ -5,7 +5,7 @@ from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.html import quote
+from html import escape
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from bot.config import get_settings
@@ -92,8 +92,8 @@ async def process_create_flat_name(message: Message, state: FSMContext, session:
     )
 
     share_url = f"https://t.me/{settings.BOT_NAME}?start=join_{flat.invite_code}"
-    safe_name = quote(flat.name)
-    safe_code = quote(flat.invite_code)
+    safe_name = escape(flat.name)
+    safe_code = escape(flat.invite_code)
 
     text = (
         f"🎉 <b>'{safe_name}' kvartirasi muvaffaqiyatli yaratildi!</b>\n\n"
@@ -137,9 +137,9 @@ async def cmd_join_flat(event: Message | CallbackQuery, state: FSMContext, sessi
                 return
             success, reply_msg = await join_flat(session, user_id, flat.id)
             if success:
-                safe_name = quote(flat.name)
-                safe_code = quote(flat.invite_code)
-                safe_msg = quote(reply_msg)
+                safe_name = escape(flat.name)
+                safe_code = escape(flat.invite_code)
+                safe_msg = escape(reply_msg)
                 await event.answer(
                     f"🎉 <b>{safe_msg}</b>\n\n"
                     f"🏠 <b>Kvartira:</b> {safe_name}\n"
@@ -148,7 +148,7 @@ async def cmd_join_flat(event: Message | CallbackQuery, state: FSMContext, sessi
                     parse_mode="HTML",
                 )
             else:
-                await event.answer(f"⚠️ {quote(reply_msg)}")
+                await event.answer(f"⚠️ {escape(reply_msg)}")
             return
 
     await state.set_state(JoinFlatSG.waiting_for_code)
@@ -174,9 +174,9 @@ async def process_join_flat_code(message: Message, state: FSMContext, session: A
     await state.clear()
     success, reply_msg = await join_flat(session, message.from_user.id, flat.id)
     if success:
-        safe_name = quote(flat.name)
-        safe_code = quote(flat.invite_code)
-        safe_msg = quote(reply_msg)
+        safe_name = escape(flat.name)
+        safe_code = escape(flat.invite_code)
+        safe_msg = escape(reply_msg)
         await message.answer(
             f"🎉 <b>{safe_msg}</b>\n\n"
             f"🏠 <b>Kvartira:</b> {safe_name}\n"
@@ -185,7 +185,7 @@ async def process_join_flat_code(message: Message, state: FSMContext, session: A
             parse_mode="HTML",
         )
     else:
-        await message.answer(f"⚠️ {quote(reply_msg)}", reply_markup=get_start_unregistered_kb())
+        await message.answer(f"⚠️ {escape(reply_msg)}", reply_markup=get_start_unregistered_kb())
 
 
 # ------------------- MEMBERS & LEAVE ------------------- #
@@ -208,15 +208,15 @@ async def cmd_members(event: Message | CallbackQuery, session: AsyncSession) -> 
     members = await get_flat_members(session, user.flat_id)
     flat = await get_flat_by_id(session, user.flat_id)
 
-    safe_flat_name = quote(flat.name)
+    safe_flat_name = escape(flat.name)
     lines = [f"👥 <b>'{safe_flat_name}' kvartirasi a'zolari ({len(members)}/{flat.max_members} kishi):</b>\n"]
     for idx, m in enumerate(members, start=1):
         creator_badge = " 👑 (Admin)" if m.id == flat.creator_id else ""
-        safe_full_name = quote(m.full_name)
-        safe_mention = quote(m.mention)
+        safe_full_name = escape(m.full_name)
+        safe_mention = escape(m.mention)
         lines.append(f"{idx}. <b>{safe_full_name}</b> ({safe_mention}){creator_badge}")
 
-    lines.append(f"\n🔑 Taklif kodi: <code>{quote(flat.invite_code)}</code>")
+    lines.append(f"\n🔑 Taklif kodi: <code>{escape(flat.invite_code)}</code>")
     reply_text = "\n".join(lines)
 
     if isinstance(event, CallbackQuery):

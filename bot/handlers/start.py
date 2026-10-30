@@ -2,7 +2,7 @@ import re
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.html import quote
+from html import escape
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from bot.config import get_settings
@@ -58,9 +58,9 @@ async def handle_start(message: Message, state: FSMContext, session: AsyncSessio
         else:
             success, reply_msg = await join_flat(session, user.id, flat.id)
             if success:
-                safe_reply = quote(reply_msg)
-                safe_name = quote(flat.name)
-                safe_code = quote(flat.invite_code)
+                safe_reply = escape(reply_msg)
+                safe_name = escape(flat.name)
+                safe_code = escape(flat.invite_code)
                 await message.answer(
                     f"🎉 <b>{safe_reply}</b>\n\n"
                     f"🏠 <b>Kvartira:</b> {safe_name}\n"
@@ -71,14 +71,14 @@ async def handle_start(message: Message, state: FSMContext, session: AsyncSessio
                 )
                 return
             else:
-                await message.answer(f"⚠️ {quote(reply_msg)}")
+                await message.answer(f"⚠️ {escape(reply_msg)}")
 
     # 2. Check if user is already in a flat
     if user.flat_id:
         flat = await get_flat_by_id(session, user.flat_id)
         if flat:
-            safe_user = quote(user.full_name)
-            safe_flat = quote(flat.name)
+            safe_user = escape(user.full_name)
+            safe_flat = escape(flat.name)
             await message.answer(
                 f"Assalomu alaykum, <b>{safe_user}</b>!\n\n"
                 f"🏠 Siz <b>{safe_flat}</b> kvartirasi a'zosisiz.\n"
@@ -90,7 +90,7 @@ async def handle_start(message: Message, state: FSMContext, session: AsyncSessio
             return
 
     # 3. New / Unregistered user
-    safe_user = quote(user.full_name)
+    safe_user = escape(user.full_name)
     text = (
         f"Assalomu alaykum, <b>{safe_user}</b>!\n\n"
         "🌟 <b>'Tartibli Xonadosh'</b> tizimiga xush kelibsiz!\n\n"

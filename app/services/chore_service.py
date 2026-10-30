@@ -94,6 +94,21 @@ class ChoreService:
         )
 
     @classmethod
+    async def defer_chore(
+        cls,
+        session: AsyncSession,
+        assignment_id: int,
+        notes: Optional[str] = "Kechiktirildi"
+    ) -> Optional[ChoreAssignment]:
+        """Defers a chore keeping its status as PENDING."""
+        return await ChoreRepository.update_status(
+            session=session,
+            assignment_id=assignment_id,
+            status=ChoreStatus.PENDING,
+            notes=notes
+        )
+
+    @classmethod
     async def skip_chore(
         cls,
         session: AsyncSession,

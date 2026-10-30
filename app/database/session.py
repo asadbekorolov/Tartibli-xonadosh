@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from app.config import get_settings
 from app.database.base import Base
+import app.models  # Ensures all model tables are registered in Base.metadata
 
 settings = get_settings()
 

@@ -3,7 +3,7 @@ import re
 from typing import Optional
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.html import quote
+from html import escape
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.keyboards.common_kb import get_cancel_kb, get_main_menu_kb
@@ -30,7 +30,7 @@ async def cmd_add_expense(
 ) -> None:
     """Initiates communal expense logging dialog."""
     if not current_flat:
-        await message.answer("Siz hali kvartiraga qo'shilmagansiz. /start bosing.")
+        await message.answer("Siz hali kvartiraga qo'shilmagansiz. /start bosing.", parse_mode="HTML")
         return
 
     await state.set_state(AddExpenseSG.waiting_for_amount)
@@ -60,7 +60,8 @@ async def process_expense_amount(message: Message, state: FSMContext) -> None:
     await state.set_state(AddExpenseSG.waiting_for_category)
     await message.answer(
         "📂 Xarajat kategoriyasini tanlang:",
-        reply_markup=get_expense_categories_kb()
+        reply_markup=get_expense_categories_kb(),
+        parse_mode="HTML"
     )
 
 
@@ -90,7 +91,7 @@ async def process_expense_title(
     await state.clear()
 
     if not current_flat:
-        await message.answer("Xatolik: kvartira topilmadi.", reply_markup=get_main_menu_kb())
+        await message.answer("Xatolik: kvartira topilmadi.", reply_markup=get_main_menu_kb(), parse_mode="HTML")
         return
 
     amount = Decimal(data["amount"])
@@ -116,8 +117,8 @@ async def process_expense_title(
         ExpenseCategory.OTHER: "📦 Boshqa",
     }
 
-    safe_title = quote(expense.title)
-    safe_payer = quote(current_user.display_name)
+    safe_title = escape(expense.title)
+    safe_payer = escape(current_user.display_name)
 
     await message.answer(
         f"🧾 <b>Yangi xarajat muvaffaqiyatli qo'shildi!</b>\n\n"
@@ -142,7 +143,7 @@ async def show_ledger_balances(
 ) -> None:
     """Calculates ledger balances and displays simplified debt settlement paths."""
     if not current_flat:
-        await message.answer("Siz hali kvartiraga qo'shilmagansiz. /start bosing.")
+        await message.answer("Siz hali kvartiraga qo'shilmagansiz. /start bosing.", parse_mode="HTML")
         return
 
     balances, simplified_debts, total_spent = await ExpenseService.get_flat_ledger(
@@ -150,7 +151,7 @@ async def show_ledger_balances(
         flat_id=current_flat.id
     )
 
-    safe_flat = quote(current_flat.name)
+    safe_flat = escape(current_flat.name)
     report_lines = [
         f"📊 <b>'{safe_flat}' kvartirasi moliyaviy balansi:</b>\n",
         f"💰 <b>Jami umumiy xarajatlar:</b> {int(total_spent):,} so'm\n",
@@ -165,7 +166,7 @@ async def show_ledger_balances(
         else:
             status_text = "⚪️ 0 so'm (Hisobi teng)"
 
-        safe_name = quote(b.user_name)
+        safe_name = escape(b.user_name)
         report_lines.append(f"• <b>{safe_name}:</b> {status_text} | Sarfladi: {int(b.total_paid):,} so'm")
 
     report_lines.append("\n" + "—" * 25 + "\n")
@@ -177,8 +178,8 @@ async def show_ledger_balances(
 
     report_lines.append("💳 <b>O'zaro hisob-kitob (Tavsiya etilgan to'lovlar):</b>\n")
     for t in simplified_debts:
-        safe_debtor = quote(t.debtor_name)
-        safe_creditor = quote(t.creditor_name)
+        safe_debtor = escape(t.debtor_name)
+        safe_creditor = escape(t.creditor_name)
         report_lines.append(
             f"👉 <b>{safe_debtor}</b> ➔ <b>{safe_creditor}</b>ga: <code>{int(t.amount):,} so'm</code>"
         )
@@ -187,8 +188,8 @@ async def show_ledger_balances(
 
     # Send interactive settlement buttons for quick clearing
     for t in simplified_debts:
-        safe_debtor = quote(t.debtor_name)
-        safe_creditor = quote(t.creditor_name)
+        safe_debtor = escape(t.debtor_name)
+        safe_creditor = escape(t.creditor_name)
         await message.answer(
             f"To'lovni tasdiqlash: <b>{safe_debtor}</b> ➔ <b>{safe_creditor}</b> ({int(t.amount):,} so'm):",
             reply_markup=get_settlement_confirm_kb(t.debtor_id, t.creditor_id, t.amount),

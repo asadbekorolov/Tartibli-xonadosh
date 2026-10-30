@@ -37,6 +37,7 @@ services:
       dockerfile: Dockerfile
     container_name: tartibli_bot
     restart: unless-stopped
+    command: python main.py
     env_file:
       - .env
     depends_on:

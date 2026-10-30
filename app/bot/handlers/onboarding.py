@@ -1,7 +1,7 @@
 from typing import Optional
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.html import quote
+from html import escape
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.keyboards.common_kb import get_cancel_kb, get_main_menu_kb
@@ -36,14 +36,15 @@ async def cb_create_flat(callback: CallbackQuery, state: FSMContext) -> None:
 async def process_flat_name(message: Message, state: FSMContext) -> None:
     name = message.text.strip()
     if len(name) < 3:
-        await message.answer("⚠️ Nom juda qisqa. Kamida 3 ta belgi kiriting:")
+        await message.answer("⚠️ Nom juda qisqa. Kamida 3 ta belgi kiriting:", parse_mode="HTML")
         return
 
     await state.update_data(flat_name=name)
     await state.set_state(CreateFlatSG.waiting_for_address)
     await message.answer(
-        "📍 Kvartira manzilini kiriting (yoki o'tkazib yuborish uchun `-` belgisini yozing):",
-        reply_markup=get_cancel_kb()
+        "📍 Kvartira manzilini kiriting (yoki o'tkazib yuborish uchun <code>-</code> belgisini yozing):",
+        reply_markup=get_cancel_kb(),
+        parse_mode="HTML"
     )
 
 
@@ -70,13 +71,13 @@ async def process_flat_address(
             address=address,
         )
     except ValueError as e:
-        await message.answer(f"⚠️ {quote(str(e))}", reply_markup=get_main_menu_kb())
+        await message.answer(f"⚠️ {escape(str(e))}", reply_markup=get_main_menu_kb(), parse_mode="HTML")
         return
 
     invite_link = f"https://t.me/{settings.BOT_NAME}?start=join_{flat.invite_code}"
-    safe_name = quote(flat.name)
-    safe_address = quote(flat.address) if flat.address else "Kiritilmagan"
-    safe_code = quote(flat.invite_code)
+    safe_name = escape(flat.name)
+    safe_address = escape(flat.address) if flat.address else "Kiritilmagan"
+    safe_code = escape(flat.invite_code)
 
     await message.answer(
         f"🎉 <b>Kvartira muvaffaqiyatli yaratildi!</b>\n\n"
@@ -122,8 +123,8 @@ async def process_join_code(
     )
 
     if success and flat:
-        safe_reply = quote(reply_text)
-        safe_name = quote(flat.name)
+        safe_reply = escape(reply_text)
+        safe_name = escape(flat.name)
         await message.answer(
             f"{safe_reply}\n\n"
             f"🏠 <b>Kvartira:</b> {safe_name}\n\n"
@@ -132,7 +133,7 @@ async def process_join_code(
             parse_mode="HTML"
         )
     else:
-        safe_reply = quote(reply_text)
+        safe_reply = escape(reply_text)
         await message.answer(
             f"{safe_reply}\nKodni qayta tekshirib ko'ring yoki /start bosing.",
             reply_markup=get_main_menu_kb(),
@@ -149,21 +150,21 @@ async def show_members(
     current_flat: Optional[Flat]
 ) -> None:
     if not current_flat:
-        await message.answer("Siz hali kvartiraga qo'shilmagansiz. /start bosing.")
+        await message.answer("Siz hali kvartiraga qo'shilmagansiz. /start bosing.", parse_mode="HTML")
         return
 
     members = await FlatRepository.get_members(session, current_flat.id)
-    safe_flat = quote(current_flat.name)
+    safe_flat = escape(current_flat.name)
     text_lines = [
         f"👥 <b>'{safe_flat}' kvartirasi a'zolari ({len(members)} kishi):</b>\n"
     ]
 
     for idx, member in enumerate(members, start=1):
         role_badge = "👑 Admin" if member.role == FlatRole.ADMIN else "👤 Xonadosh"
-        safe_user = quote(member.user.display_name)
+        safe_user = escape(member.user.display_name)
         text_lines.append(f"{idx}. {safe_user} — {role_badge}")
 
-    text_lines.append(f"\n🔑 Taklif kodi: <code>{quote(current_flat.invite_code)}</code>")
+    text_lines.append(f"\n🔑 Taklif kodi: <code>{escape(current_flat.invite_code)}</code>")
     await message.answer("\n".join(text_lines), parse_mode="HTML")
 
 
@@ -174,13 +175,13 @@ async def show_settings(
     current_flat: Optional[Flat]
 ) -> None:
     if not current_flat:
-        await message.answer("Siz hali kvartiraga qo'shilmagansiz. /start bosing.")
+        await message.answer("Siz hali kvartiraga qo'shilmagansiz. /start bosing.", parse_mode="HTML")
         return
 
     members = await FlatRepository.get_members(session, current_flat.id)
-    safe_name = quote(current_flat.name)
-    safe_address = quote(current_flat.address) if current_flat.address else "Mavjud emas"
-    safe_code = quote(current_flat.invite_code)
+    safe_name = escape(current_flat.name)
+    safe_address = escape(current_flat.address) if current_flat.address else "Mavjud emas"
+    safe_code = escape(current_flat.invite_code)
     text = (
         f"⚙️ <b>Kvartira sozlamalari va ma'lumotlari:</b>\n\n"
         f"🏠 <b>Nomi:</b> {safe_name}\n"
