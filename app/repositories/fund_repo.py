@@ -79,3 +79,4 @@ class FundRepository:
         total_income = Decimal(str(inc_res.scalar() or 0))
         total_expense = Decimal(str(exp_res.scalar() or 0))
         return total_income, total_expense
+

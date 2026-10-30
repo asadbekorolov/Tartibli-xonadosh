@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from enum import Enum
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -26,6 +26,12 @@ class RotationType(str, Enum):
     PAIR_ROTATION = "PAIR_ROTATION"  # Pair duty rotation (2 people per task)
 
 
+class ChoreFrequencyType(str, Enum):
+    DAILY = "DAILY"
+    WEEKLY = "WEEKLY"
+    CUSTOM = "CUSTOM"
+
+
 class ChoreStatus(str, Enum):
     PENDING = "PENDING"
     COMPLETED = "COMPLETED"
@@ -48,11 +54,21 @@ class Chore(Base, TimestampMixin):
         default=RotationType.ROUND_ROBIN,
         nullable=False
     )
+    frequency_type: Mapped[ChoreFrequencyType] = mapped_column(
+        SQLEnum(ChoreFrequencyType, name="chore_frequency_type_enum"),
+        default=ChoreFrequencyType.DAILY,
+        nullable=False
+    )
     frequency_days: Mapped[int] = mapped_column(Integer, default=1, nullable=False)  # 1 = daily, 7 = weekly
-    execution_time: Mapped[str] = mapped_column(String(5), default="20:00", nullable=False)  # HH:MM format
+    execution_time: Mapped[str] = mapped_column(String(5), default="21:00", nullable=False)  # HH:MM format
     current_member_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     checklist: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
     assignee_ids: Mapped[Optional[List[int]]] = mapped_column(JSON, nullable=True)
+
+    # Advanced custom scheduling
+    assigned_weekdays: Mapped[Optional[Dict[str, int]]] = mapped_column(JSON, nullable=True)  # {"MON": user_id, ...}
+    assigned_pairs: Mapped[Optional[List[List[int]]]] = mapped_column(JSON, nullable=True)     # [[u1, u2], [u3, u4]]
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     @property

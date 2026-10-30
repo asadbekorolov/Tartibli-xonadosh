@@ -69,15 +69,19 @@ def get_flat_settings_kb(invite_code: str, bot_username: str) -> InlineKeyboardM
             ],
             [
                 InlineKeyboardButton(
-                    text="📜 Kvartira qoidalarini ko'rish",
-                    callback_data="rules:show"
+                    text="🛠 Navbatchilikni sozlash (Admin)",
+                    callback_data="admin:chores_menu"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="➕ Yangi navbatchilik qo'shish",
-                    callback_data="chore:add_new"
-                )
+                    text="📜 Kvartira qoidalari",
+                    callback_data="rules:show"
+                ),
+                InlineKeyboardButton(
+                    text="👑 Admin paneli",
+                    callback_data="admin:menu"
+                ),
             ],
         ]
     )

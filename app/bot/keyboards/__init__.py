@@ -1,3 +1,14 @@
+from app.bot.keyboards.admin_kb import (
+    get_admin_panel_kb,
+    get_chore_frequency_kb,
+    get_chores_admin_menu_kb,
+    get_chores_management_list_kb,
+    get_chores_picker_kb,
+    get_members_for_assignment_kb,
+    get_rules_delete_kb,
+    get_rules_view_kb,
+    get_weekdays_picker_kb,
+)
 from app.bot.keyboards.chore_kb import get_chore_actions_kb
 from app.bot.keyboards.common_kb import get_cancel_kb, get_main_menu_kb
 from app.bot.keyboards.expense_kb import (
@@ -19,4 +30,13 @@ __all__ = [
     "get_chore_actions_kb",
     "get_fund_menu_kb",
     "get_fund_collect_confirm_kb",
+    "get_rules_view_kb",
+    "get_rules_delete_kb",
+    "get_admin_panel_kb",
+    "get_chores_admin_menu_kb",
+    "get_chores_picker_kb",
+    "get_weekdays_picker_kb",
+    "get_members_for_assignment_kb",
+    "get_chore_frequency_kb",
+    "get_chores_management_list_kb",
 ]

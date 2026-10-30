@@ -157,3 +157,4 @@ class TemplateService:
             created_chores.append(chore)
 
         return created_chores
+

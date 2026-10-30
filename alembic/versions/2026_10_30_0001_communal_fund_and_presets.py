@@ -198,3 +198,4 @@ def downgrade() -> None:
     op.drop_table("flat_members", if_exists=True)
     op.drop_table("flats", if_exists=True)
     op.drop_table("users", if_exists=True)
+

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.models.flat import Flat, FlatMember, FlatRole, FlatTemplateType
 from app.repositories.flat_repo import FlatRepository
+from app.services.rule_service import RuleService
 from app.services.templates import TemplateService
 
 settings = get_settings()
@@ -50,8 +51,8 @@ class OnboardingService:
         address: Optional[str] = None,
     ) -> Flat:
         """
-        Creates a new flat, binds the creator as ADMIN, and bootstraps default chores
-        based on the selected multi-tenant apartment preset.
+        Creates a new flat, binds the creator as ADMIN, bootstraps default chores
+        and baseline house rules based on the selected multi-tenant apartment preset.
         """
         existing_flat = await FlatRepository.get_user_active_flat(session, creator_id)
         if existing_flat:
@@ -70,6 +71,13 @@ class OnboardingService:
 
         # Bootstrap preset chore duties
         await TemplateService.apply_template_to_flat(
+            session=session,
+            flat_id=flat.id,
+            template_type=template_type,
+        )
+
+        # Bootstrap preset house rules
+        await RuleService.seed_default_rules(
             session=session,
             flat_id=flat.id,
             template_type=template_type,

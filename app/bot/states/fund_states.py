@@ -9,3 +9,4 @@ class FundCollectSG(StatesGroup):
 class FundExpenseSG(StatesGroup):
     waiting_for_amount = State()
     waiting_for_description = State()
+

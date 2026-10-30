@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from app.models.chore import Chore, ChoreAssignment
     from app.models.expense import Expense, Settlement
     from app.models.fund import FundTransaction
+    from app.models.rule import FlatRule
 
 
 class FlatRole(str, Enum):
@@ -83,6 +84,13 @@ class Flat(Base, TimestampMixin):
     )
     fund_transactions: Mapped[List["FundTransaction"]] = relationship(
         "FundTransaction", back_populates="flat", cascade="all, delete-orphan", lazy="selectin"
+    )
+    rules: Mapped[List["FlatRule"]] = relationship(
+        "FlatRule",
+        back_populates="flat",
+        cascade="all, delete-orphan",
+        order_by="FlatRule.order_num.asc()",
+        lazy="selectin",
     )
 
     # Deprecated pairwise ledger relationships (kept for schema compatibility)

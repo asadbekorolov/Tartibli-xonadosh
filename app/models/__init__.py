@@ -1,4 +1,10 @@
-from app.models.chore import Chore, ChoreAssignment, ChoreStatus, RotationType
+from app.models.chore import (
+    Chore,
+    ChoreAssignment,
+    ChoreFrequencyType,
+    ChoreStatus,
+    RotationType,
+)
 from app.models.expense import (
     Expense,
     ExpenseCategory,
@@ -8,6 +14,7 @@ from app.models.expense import (
 )
 from app.models.flat import Flat, FlatMember, FlatRole, FlatTemplateType
 from app.models.fund import FundTransaction, TransactionType
+from app.models.rule import FlatRule
 from app.models.user import User
 
 __all__ = [
@@ -16,8 +23,10 @@ __all__ = [
     "FlatMember",
     "FlatRole",
     "FlatTemplateType",
+    "FlatRule",
     "Chore",
     "ChoreAssignment",
+    "ChoreFrequencyType",
     "RotationType",
     "ChoreStatus",
     "FundTransaction",

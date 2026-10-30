@@ -135,3 +135,4 @@ class FundService:
             recent_transactions=recent_txs,
             member_count=len(members),
         )
+
