@@ -33,35 +33,18 @@ async def cb_create_flat(callback: CallbackQuery, state: FSMContext) -> None:
 
 
 @router.message(CreateFlatSG.waiting_for_name)
-async def process_flat_name(message: Message, state: FSMContext) -> None:
-    name = message.text.strip()
-    if len(name) < 3:
-        await message.answer("⚠️ Nom juda qisqa. Kamida 3 ta belgi kiriting:", parse_mode="HTML")
-        return
-
-    await state.update_data(flat_name=name)
-    await state.set_state(CreateFlatSG.waiting_for_address)
-    await message.answer(
-        "📍 Kvartira manzilini kiriting (yoki o'tkazib yuborish uchun <code>-</code> belgisini yozing):",
-        reply_markup=get_cancel_kb(),
-        parse_mode="HTML"
-    )
-
-
-@router.message(CreateFlatSG.waiting_for_address)
-async def process_flat_address(
+async def process_flat_name(
     message: Message,
     state: FSMContext,
     session: AsyncSession,
     current_user: Optional[User] = None
 ) -> None:
-    address_text = message.text.strip()
-    address = None if address_text == "-" else address_text
+    name = message.text.strip()
+    if len(name) < 3:
+        await message.answer("⚠️ Nom juda qisqa. Kamida 3 ta belgi kiriting:", parse_mode="HTML")
+        return
 
-    data = await state.get_data()
-    flat_name = data["flat_name"]
     await state.clear()
-
     user_id = current_user.id if current_user else (message.from_user.id if message.from_user else 0)
 
     # Create flat and seed initial default student chores
@@ -69,8 +52,8 @@ async def process_flat_address(
         flat = await OnboardingService.create_flat_for_user(
             session=session,
             creator_id=user_id,
-            flat_name=flat_name,
-            address=address,
+            flat_name=name,
+            address=None,
         )
     except ValueError as e:
         await message.answer(f"⚠️ {escape(str(e))}", reply_markup=get_main_menu_kb(), parse_mode="HTML")
@@ -78,13 +61,11 @@ async def process_flat_address(
 
     invite_link = f"https://t.me/{settings.BOT_NAME}?start=join_{flat.invite_code}"
     safe_name = escape(flat.name)
-    safe_address = escape(flat.address) if flat.address else "Kiritilmagan"
     safe_code = escape(flat.invite_code)
 
     await message.answer(
         f"🎉 <b>Kvartira muvaffaqiyatli yaratildi!</b>\n\n"
         f"🏠 <b>Nomi:</b> {safe_name}\n"
-        f"📍 <b>Manzili:</b> {safe_address}\n"
         f"🔑 <b>Taklif kodi:</b> <code>{safe_code}</code>\n\n"
         f"👥 Xonadoshlaringizni qo'shish uchun ushbu havolani yuboring:\n"
         f"{invite_link}\n\n"
@@ -184,12 +165,12 @@ async def show_settings(
 
     members = await FlatRepository.get_members(session, current_flat.id)
     safe_name = escape(current_flat.name)
-    safe_address = escape(current_flat.address) if current_flat.address else "Mavjud emas"
     safe_code = escape(current_flat.invite_code)
+    address_line = f"📍 <b>Manzili:</b> {escape(current_flat.address)}\n" if current_flat.address else ""
     text = (
         f"⚙️ <b>Kvartira sozlamalari va ma'lumotlari:</b>\n\n"
         f"🏠 <b>Nomi:</b> {safe_name}\n"
-        f"📍 <b>Manzili:</b> {safe_address}\n"
+        f"{address_line}"
         f"👥 <b>A'zolar soni:</b> {len(members)} ta\n"
         f"🔑 <b>Taklif kodi:</b> <code>{safe_code}</code>\n\n"
         f"Xonadoshlarni taklif qilish uchun quyidagi tugmani bosing:"
